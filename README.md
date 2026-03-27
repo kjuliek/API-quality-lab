@@ -68,7 +68,7 @@ src/
   utils.js    # Utility functions: capitalize, calculateAverage, slugify, clamp
 tests/
   app.test.js   # HTTP tests with Supertest
-  utils.test.js # Unit tests for utility functions (31 tests)
+  utils.test.js # Unit tests for utility functions (33 tests)
 ```
 
 ## Why separate app.js and server.js?
@@ -138,6 +138,7 @@ Constrains a value between a minimum and a maximum.
 | `clamp(0, 0, 10)` | `0` |
 | `clamp(10, 0, 10)` | `10` |
 | `clamp(-3, -5, -1)` | `-3` |
+| `clamp('a', 0, 10)` | throws `TypeError` |
 
 ---
 
@@ -186,6 +187,20 @@ return text
   .replace(/[^a-z0-9\s-]/g, '') // remove special chars first
   .replace(/\s+/g, '-')          // then replace spaces
   .replace(/^-+|-+$/g, '');      // strip leading/trailing dashes
+```
+
+---
+
+**clamp — non-number arguments produce NaN silently**
+
+`clamp('a', 0, 10)` would return `NaN` without error because `Math.max('a', 0)` propagates `NaN` silently in JavaScript.
+
+Fix: validate all three arguments upfront and throw a `TypeError` if any is not a number:
+
+```js
+if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {
+  throw new TypeError('value, min and max must be numbers');
+}
 ```
 
 ---
