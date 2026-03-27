@@ -28,6 +28,8 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [Bug 1 — calculateAverage: division replaced by multiplication](#bug-1--calculateaverage-division-replaced-by-multiplication)
   - [Bug 2 — isValidEmail: missing @ check](#bug-2--isvalidemail-missing--check)
   - [Bug 3 — capitalize: missing toLowerCase](#bug-3--capitalize-missing-tolowercase)
+- [A4 — TDD: sortStudents](#a4--tdd-sortstudents)
+  - [Red/Green cycles](#redgreen-cycles)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -71,14 +73,16 @@ npm start
 
 ```
 src/
-  app.js      # Express config: routes + middleware (no listen)
-  server.js   # Starts the server on port 3000
-  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp
+  app.js         # Express config: routes + middleware (no listen)
+  server.js      # Starts the server on port 3000
+  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
 tests/
-  app.test.js   # HTTP tests with Supertest
-  utils.test.js      # Unit tests for utility functions (33 tests)
+  app.test.js        # HTTP tests with Supertest
+  utils.test.js      # Unit tests for utility functions (41 tests)
   validators.test.js # Unit tests for validators (23 tests)
+docs/
+  screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
 ```
 
 ## Why separate app.js and server.js?
@@ -290,6 +294,69 @@ return str.slice(0, index) + str[index].toUpperCase() + str.slice(index + 1);
 **Why the other tests still passed:** `"hello"`, `"a"`, `"hello2world"`, `"!hello"` — all inputs were already lowercase, so removing `.toLowerCase()` had no effect. `""` and `null` — early return, never reaches the logic.
 
 **Fix:** restore `.toLowerCase()` on `str.slice(index + 1)`.
+
+---
+
+## A4 — TDD: sortStudents
+
+`sortStudents(students, sortBy, order)` sorts an array of `{ name, grade, age }` objects by any field in ascending or descending order. Built using strict TDD: each test was written first (RED), then the minimum code was written to make it pass (GREEN).
+
+**Signature:**
+```js
+sortStudents(students, sortBy, order = 'asc')
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `students` | `array` | Array of `{ name, grade, age }` objects |
+| `sortBy` | `string` | `"name"`, `"grade"` or `"age"` |
+| `order` | `string` | `"asc"` (default) or `"desc"` |
+
+### Red/Green cycles
+
+**Test 1 — sort by grade ascending**
+
+RED: function didn't exist yet → `TypeError: sortStudents is not a function`
+
+![sort by grade asc RED](docs/screenshots/a4-sort-by-grade-asc-red.png)
+
+GREEN: implemented minimum — sort by `grade` ascending only, `order` ignored.
+
+---
+
+**Test 2 — sort by grade descending**
+
+RED: `order` parameter ignored → result was ascending instead of descending.
+
+![sort by grade desc RED](docs/screenshots/a4-sort-by-grade-desc-red.png)
+
+GREEN: added `order === 'asc'` condition to reverse comparison.
+
+---
+
+**Test 3 — sort by name ascending**
+
+RED: `sortBy` parameter ignored, always sorted by `grade`.
+
+![sort by name asc RED](docs/screenshots/a4-sort-by-name-asc-red.png)
+
+GREEN: replaced `a.grade` with `a[sortBy]` to support any field.
+
+---
+
+**Tests 4, 6, 7, 8 — age / empty / original / default order**
+
+These were **free tests** — the existing implementation already handled these cases correctly. No code change needed.
+
+---
+
+**Test 5 — null input**
+
+RED: `null` passed to spread operator → `TypeError: students is not iterable`
+
+![null input RED](docs/screenshots/a4-null-input-red.png)
+
+GREEN: added `if (!students) return []` guard.
 
 ---
 
