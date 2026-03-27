@@ -36,4 +36,18 @@ function sortStudents(students, sortBy, order = 'asc') {
   return [...students].sort((a, b) => (a[sortBy] > b[sortBy] ? (order === 'asc' ? 1 : -1) : (order === 'asc' ? -1 : 1)));
 }
 
-module.exports = { capitalize, calculateAverage, slugify, clamp, sortStudents };
+function parsePrice(input) {
+  if (input === null || input === undefined) return null;
+  if (typeof input === 'number') return input < 0 ? null : input;
+  if (typeof input === 'string') {
+    if (input.trim().toLowerCase() === 'gratuit') return 0;
+    const cleaned = input.replace(/€/g, '').replace(',', '.').trim();
+    const parsed = parseFloat(cleaned);
+    if (isNaN(parsed)) return null;
+    if (parsed < 0) return null;
+    return parsed;
+  }
+  return null;
+}
+
+module.exports = { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice };

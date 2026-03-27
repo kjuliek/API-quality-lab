@@ -1,4 +1,4 @@
-const { capitalize, calculateAverage, slugify, clamp, sortStudents } = require('../src/utils');
+const { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice } = require('../src/utils');
 
 describe('capitalize', () => {
   it('should return "Hello" when given "hello"', () => {
@@ -343,5 +343,43 @@ describe('sortStudents', () => {
     expect(result[0].grade).toBe(18);
     expect(result[1].grade).toBe(15);
     expect(result[2].grade).toBe(10);
+  });
+});
+
+describe('parsePrice', () => {
+  it('should return 12.99 when given "12.99"', () => {
+    expect(parsePrice('12.99')).toBe(12.99);
+  });
+
+  it('should return 12.99 when given "12,99"', () => {
+    expect(parsePrice('12,99')).toBe(12.99);
+  });
+
+  it('should return 12.99 when given "12.99 €"', () => {
+    expect(parsePrice('12.99 €')).toBe(12.99);
+  });
+
+  it('should return 12.99 when given "€12.99"', () => {
+    expect(parsePrice('€12.99')).toBe(12.99);
+  });
+
+  it('should return 12.99 when given the number 12.99', () => {
+    expect(parsePrice(12.99)).toBe(12.99);
+  });
+
+  it('should return 0 when given "gratuit"', () => {
+    expect(parsePrice('gratuit')).toBe(0);
+  });
+
+  it('should return null when given "abc"', () => {
+    expect(parsePrice('abc')).toBeNull();
+  });
+
+  it('should return null when given "-5.00"', () => {
+    expect(parsePrice('-5.00')).toBeNull();
+  });
+
+  it('should return null when given null', () => {
+    expect(parsePrice(null)).toBeNull();
   });
 });
