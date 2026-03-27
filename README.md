@@ -24,6 +24,10 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [isValidEmail](#isvalidemail)
   - [isValidPassword](#isvalidpassword)
   - [isValidAge](#isvalidage)
+- [A3 — Reading failing tests](#a3--reading-failing-tests)
+  - [Bug 1 — calculateAverage: division replaced by multiplication](#bug-1--calculateaverage-division-replaced-by-multiplication)
+  - [Bug 2 — isValidEmail: missing @ check](#bug-2--isvalidemail-missing--check)
+  - [Bug 3 — capitalize: missing toLowerCase](#bug-3--capitalize-missing-tolowercase)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -195,6 +199,97 @@ Returns `true` if the age is an integer between 0 and 150 (inclusive).
 | `25.5` | `false` |
 | `"25"` | `false` |
 | `null` | `false` |
+
+---
+
+## A3 — Reading failing tests
+
+The goal of this exercise is to learn how to read test error messages. Each bug was introduced intentionally, tests were run, and the output was analysed before fixing.
+
+---
+
+### Bug 1 — calculateAverage: division replaced by multiplication
+
+**Change made:** replaced `/` by `*` in `calculateAverage`.
+
+```js
+// buggy
+return parseFloat((sum * numbers.length).toFixed(2));
+```
+
+**Tests failed:** 4 out of 7 — all cases where the result is not 0 or 1-element arrays.
+
+**Reading the errors:**
+
+`[10, 12, 14]` → sum is `36`, multiplied by `3` gives `108` instead of `12`.
+
+![calculateAverage bug error 1](docs/screenshots/a3-calculate-average-bug-error1.png)
+
+`[-10, -5]` → sum is `-15`, multiplied by `2` gives `-30` instead of `-7.5`.
+
+![calculateAverage bug error 2](docs/screenshots/a3-calculate-average-bug-error2.png)
+
+`[1, 2]` → sum is `3`, multiplied by `2` gives `6` instead of `1.5`.
+
+![calculateAverage bug error 3](docs/screenshots/a3-calculate-average-bug-error3.png)
+
+`[1.005, 1.006]` → sum is `2.011`, multiplied by `2` gives `4.02` instead of `1.01`.
+
+![calculateAverage bug error 4](docs/screenshots/a3-calculate-average-bug-error4.png)
+
+**Why the other tests still passed:** `[15]` — single element, sum × 1 = sum / 1. `[]` and `null` — early return `0`, never reaches the formula.
+
+**Fix:** restore `/`.
+
+---
+
+### Bug 2 — isValidEmail: missing @ check
+
+**Change made:** removed `@` from the regex in `isValidEmail`.
+
+```js
+// buggy
+return /^[^\s@]+[^\s@]+\.[^\s@]+$/.test(email);
+```
+
+**Tests failed:** 2 out of 7 — the two valid email cases.
+
+**Reading the errors:**
+
+`"user@example.com"` → received `false` instead of `true`. Without `@` in the regex, the pattern no longer matches valid emails containing `@`.
+
+![isValidEmail bug error 1](docs/screenshots/a3-is-valid-email-bug-error1.png)
+
+`"user.name+tag@domain.co"` → same issue.
+
+![isValidEmail bug error 2](docs/screenshots/a3-is-valid-email-bug-error2.png)
+
+**Why the other tests still passed:** the invalid cases (`"invalid"`, `"@domain.com"`, `"user@"`, `""`, `null`) were already expected to return `false` — the broken regex still returned `false` for them, so those tests passed by coincidence.
+
+**Fix:** restore `@` in the regex.
+
+---
+
+### Bug 3 — capitalize: missing toLowerCase
+
+**Change made:** removed `.toLowerCase()` from `capitalize`.
+
+```js
+// buggy
+return str.slice(0, index) + str[index].toUpperCase() + str.slice(index + 1);
+```
+
+**Tests failed:** 1 out of 7 — only `"WORLD"`.
+
+**Reading the error:**
+
+`"WORLD"` → received `"WORLD"` instead of `"World"`. Without `.toLowerCase()`, the remaining characters keep their original case.
+
+![capitalize bug error 1](docs/screenshots/a3-capitalize-bug-error1.png)
+
+**Why the other tests still passed:** `"hello"`, `"a"`, `"hello2world"`, `"!hello"` — all inputs were already lowercase, so removing `.toLowerCase()` had no effect. `""` and `null` — early return, never reaches the logic.
+
+**Fix:** restore `.toLowerCase()` on `str.slice(index + 1)`.
 
 ---
 
