@@ -36,6 +36,33 @@ describe('capitalize', () => {
     // Assert
     expect(result).toBe('');
   });
+
+  it('should return "A" when given "a"', () => {
+    // Arrange
+    const input = 'a';
+    // Act
+    const result = capitalize(input);
+    // Assert
+    expect(result).toBe('A');
+  });
+
+  it('should return "Hello2world" when given "hello2world"', () => {
+    // Arrange
+    const input = 'hello2world';
+    // Act
+    const result = capitalize(input);
+    // Assert
+    expect(result).toBe('Hello2world');
+  });
+
+  it('should return "!Hello" when given "!hello"', () => {
+    // Arrange
+    const input = '!hello';
+    // Act
+    const result = capitalize(input);
+    // Assert
+    expect(result).toBe('!Hello');
+  });
 });
 
 describe('calculateAverage', () => {
@@ -73,6 +100,41 @@ describe('calculateAverage', () => {
     const result = calculateAverage(input);
     // Assert
     expect(result).toBe(0);
+  });
+
+  it('should return -7.5 when given [-10, -5]', () => {
+    // Arrange
+    const input = [-10, -5];
+    // Act
+    const result = calculateAverage(input);
+    // Assert
+    expect(result).toBe(-7.5);
+  });
+
+  it('should return 1.5 when given [1, 2]', () => {
+    // Arrange
+    const input = [1, 2];
+    // Act
+    const result = calculateAverage(input);
+    // Assert
+    expect(result).toBe(1.5);
+  });
+
+  it('should round to 2 decimal places when given [1.005, 1.006]', () => {
+    // Arrange
+    const input = [1.005, 1.006];
+    // Act
+    const result = calculateAverage(input);
+    // Assert
+    expect(result).toBe(1.01);
+  });
+
+  it('should throw a TypeError when given an array with a non-number', () => {
+    // Arrange
+    const input = [1, 'abc', 3];
+    // Act & Assert
+    expect(() => calculateAverage(input)).toThrow(TypeError);
+    expect(() => calculateAverage(input)).toThrow('All elements must be numbers');
   });
 });
 
@@ -112,6 +174,42 @@ describe('slugify', () => {
     // Assert
     expect(result).toBe('');
   });
+
+  it('should return "hello-world" when given "hello   world"', () => {
+    // Arrange
+    const input = 'hello   world';
+    // Act
+    const result = slugify(input);
+    // Assert
+    expect(result).toBe('hello-world');
+  });
+
+  it('should return "" when given "!!!"', () => {
+    // Arrange
+    const input = '!!!';
+    // Act
+    const result = slugify(input);
+    // Assert
+    expect(result).toBe('');
+  });
+
+  it('should return "hello-123-world" when given "Hello 123 World"', () => {
+    // Arrange
+    const input = 'Hello 123 World';
+    // Act
+    const result = slugify(input);
+    // Assert
+    expect(result).toBe('hello-123-world');
+  });
+
+  it('should return "hello-world" when given "hello ! world"', () => {
+    // Arrange
+    const input = 'hello ! world';
+    // Act
+    const result = slugify(input);
+    // Assert
+    expect(result).toBe('hello-world');
+  });
 });
 
 describe('clamp', () => {
@@ -129,5 +227,17 @@ describe('clamp', () => {
 
   it('should return 0 when value is 0 and range is [0, 0]', () => {
     expect(clamp(0, 0, 0)).toBe(0);
+  });
+
+  it('should return 0 when value equals min', () => {
+    expect(clamp(0, 0, 10)).toBe(0);
+  });
+
+  it('should return 10 when value equals max', () => {
+    expect(clamp(10, 0, 10)).toBe(10);
+  });
+
+  it('should return -3 when value is -3 and range is [-5, -1]', () => {
+    expect(clamp(-3, -5, -1)).toBe(-3);
   });
 });
