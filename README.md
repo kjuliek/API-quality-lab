@@ -20,6 +20,10 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [calculateAverage](#calculateaverage)
   - [slugify](#slugify)
   - [clamp](#clamp)
+- [A2 — Validators](#a2--validators)
+  - [isValidEmail](#isvalidemail)
+  - [isValidPassword](#isvalidpassword)
+  - [isValidAge](#isvalidage)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -65,10 +69,12 @@ npm start
 src/
   app.js      # Express config: routes + middleware (no listen)
   server.js   # Starts the server on port 3000
-  utils.js    # Utility functions: capitalize, calculateAverage, slugify, clamp
+  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp
+  validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
 tests/
   app.test.js   # HTTP tests with Supertest
-  utils.test.js # Unit tests for utility functions (33 tests)
+  utils.test.js      # Unit tests for utility functions (33 tests)
+  validators.test.js # Unit tests for validators (23 tests)
 ```
 
 ## Why separate app.js and server.js?
@@ -139,6 +145,56 @@ Constrains a value between a minimum and a maximum.
 | `clamp(10, 0, 10)` | `10` |
 | `clamp(-3, -5, -1)` | `-3` |
 | `clamp('a', 0, 10)` | throws `TypeError` |
+
+---
+
+## A2 — Validators
+
+Validation functions for user input. Each function returns either a boolean or a detailed object with errors.
+
+### isValidEmail
+
+Returns `true` if the email contains a local part, `@`, a domain and a `.`.
+
+| Input | Expected output |
+|---|---|
+| `"user@example.com"` | `true` |
+| `"user.name+tag@domain.co"` | `true` |
+| `"invalid"` | `false` |
+| `"@domain.com"` | `false` |
+| `"user@"` | `false` |
+| `""` | `false` |
+| `null` | `false` |
+
+### isValidPassword
+
+Returns `{ valid: boolean, errors: string[] }`. Validates 5 rules independently.
+
+| Input | Expected output |
+|---|---|
+| `"Passw0rd!"` | `{ valid: true, errors: [] }` |
+| `"short"` | `{ valid: false, errors: [length, uppercase, digit, special] }` |
+| `"alllowercase1!"` | missing uppercase error |
+| `"ALLUPPERCASE1!"` | missing lowercase error |
+| `"NoDigits!here"` | missing digit error |
+| `"NoSpecial1here"` | missing special character error |
+| `""` | `{ valid: false, errors: [5 errors] }` |
+| `null` | `{ valid: false, errors: [5 errors] }` |
+
+### isValidAge
+
+Returns `true` if the age is an integer between 0 and 150 (inclusive).
+
+| Input | Expected output |
+|---|---|
+| `25` | `true` |
+| `0` | `true` |
+| `150` | `true` |
+| `-1` | `false` |
+| `151` | `false` |
+| `25.5` | `false` |
+| `"25"` | `false` |
+| `null` | `false` |
 
 ---
 
