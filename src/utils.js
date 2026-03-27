@@ -31,4 +31,9 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-module.exports = { capitalize, calculateAverage, slugify, clamp };
+function sortStudents(students, sortBy, order = 'asc') {
+  if (!students) return [];
+  return [...students].sort((a, b) => (a[sortBy] > b[sortBy] ? (order === 'asc' ? 1 : -1) : (order === 'asc' ? -1 : 1)));
+}
+
+module.exports = { capitalize, calculateAverage, slugify, clamp, sortStudents };

@@ -1,4 +1,4 @@
-const { capitalize, calculateAverage, slugify, clamp } = require('../src/utils');
+const { capitalize, calculateAverage, slugify, clamp, sortStudents } = require('../src/utils');
 
 describe('capitalize', () => {
   it('should return "Hello" when given "hello"', () => {
@@ -244,5 +244,104 @@ describe('clamp', () => {
   it('should throw a TypeError when value is not a number', () => {
     expect(() => clamp('a', 0, 10)).toThrow(TypeError);
     expect(() => clamp('a', 0, 10)).toThrow('value, min and max must be numbers');
+  });
+});
+
+describe('sortStudents', () => {
+  it('should sort students by grade ascending', () => {
+    // Arrange
+    const students = [
+      { name: 'Alice', grade: 15, age: 20 },
+      { name: 'Bob', grade: 10, age: 22 },
+      { name: 'Charlie', grade: 18, age: 21 },
+    ];
+    // Act
+    const result = sortStudents(students, 'grade', 'asc');
+    // Assert
+    expect(result[0].grade).toBe(10);
+    expect(result[1].grade).toBe(15);
+    expect(result[2].grade).toBe(18);
+  });
+
+  it('should return empty array for null input', () => {
+    expect(sortStudents(null)).toEqual([]);
+  });
+
+  it('should return empty array for empty input', () => {
+    expect(sortStudents([])).toEqual([]);
+  });
+
+  it('should default to ascending order when order is not specified', () => {
+    // Arrange
+    const students = [
+      { name: 'Charlie', grade: 18, age: 21 },
+      { name: 'Alice', grade: 15, age: 20 },
+      { name: 'Bob', grade: 10, age: 22 },
+    ];
+    // Act
+    const result = sortStudents(students, 'grade');
+    // Assert
+    expect(result[0].grade).toBe(10);
+    expect(result[1].grade).toBe(15);
+    expect(result[2].grade).toBe(18);
+  });
+
+  it('should not modify the original array', () => {
+    // Arrange
+    const students = [
+      { name: 'Charlie', grade: 18, age: 21 },
+      { name: 'Alice', grade: 15, age: 20 },
+    ];
+    const original = [...students];
+    // Act
+    sortStudents(students, 'grade', 'asc');
+    // Assert
+    expect(students).toEqual(original);
+  });
+
+
+  it('should sort students by age ascending', () => {
+    // Arrange
+    const students = [
+      { name: 'Alice', grade: 15, age: 22 },
+      { name: 'Bob', grade: 10, age: 20 },
+      { name: 'Charlie', grade: 18, age: 21 },
+    ];
+    // Act
+    const result = sortStudents(students, 'age', 'asc');
+    // Assert
+    expect(result[0].age).toBe(20);
+    expect(result[1].age).toBe(21);
+    expect(result[2].age).toBe(22);
+  });
+
+  it('should sort students by name ascending', () => {
+    // Arrange
+    const students = [
+      { name: 'Charlie', grade: 18, age: 21 },
+      { name: 'Alice', grade: 15, age: 20 },
+      { name: 'Bob', grade: 10, age: 22 },
+    ];
+    // Act
+    const result = sortStudents(students, 'name', 'asc');
+    // Assert
+    expect(result[0].name).toBe('Alice');
+    expect(result[1].name).toBe('Bob');
+    expect(result[2].name).toBe('Charlie');
+  });
+
+  it('should sort students by grade descending', () => {
+    // Arrange
+    const students = [
+      { name: 'Alice', grade: 15, age: 20 },
+      { name: 'Bob', grade: 10, age: 22 },
+      { name: 'Charlie', grade: 18, age: 21 },
+    ];
+    // Act
+    const result = sortStudents(students, 'grade', 'desc');
+    // Assert
+    expect(result[0].grade).toBe(18);
+    expect(result[1].grade).toBe(15);
+    expect(result[2].grade).toBe(10);
   });
 });
