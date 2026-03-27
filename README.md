@@ -30,6 +30,7 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [Bug 3 — capitalize: missing toLowerCase](#bug-3--capitalize-missing-tolowercase)
 - [A4 — TDD: sortStudents](#a4--tdd-sortstudents)
   - [Red/Green cycles](#redgreen-cycles)
+- [A5 — parsePrice](#a5--parseprice)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -79,7 +80,7 @@ src/
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
 tests/
   app.test.js        # HTTP tests with Supertest
-  utils.test.js      # Unit tests for utility functions (41 tests)
+  utils.test.js      # Unit tests for utility functions (50 tests)
   validators.test.js # Unit tests for validators (23 tests)
 docs/
   screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
@@ -312,6 +313,19 @@ sortStudents(students, sortBy, order = 'asc')
 | `sortBy` | `string` | `"name"`, `"grade"` or `"age"` |
 | `order` | `string` | `"asc"` (default) or `"desc"` |
 
+**Tests written:**
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should sort students by grade ascending | RED → GREEN |
+| 2 | should sort students by grade descending | RED → GREEN |
+| 3 | should sort students by name ascending | RED → GREEN |
+| 4 | should sort students by age ascending | free test (GREEN) |
+| 5 | should return empty array for null input | RED → GREEN |
+| 6 | should return empty array for empty input | free test (GREEN) |
+| 7 | should not modify the original array | free test (GREEN) |
+| 8 | should default to ascending order when order is not specified | free test (GREEN) |
+
 ### Red/Green cycles
 
 **Test 1 — sort by grade ascending**
@@ -357,6 +371,34 @@ RED: `null` passed to spread operator → `TypeError: students is not iterable`
 ![null input RED](docs/screenshots/a4-null-input-red.png)
 
 GREEN: added `if (!students) return []` guard.
+
+---
+
+## A5 — parsePrice
+
+Converts a price in various formats to a number.
+
+```js
+parsePrice(input)
+```
+
+| Input | Expected output |
+|---|---|
+| `"12.99"` | `12.99` |
+| `"12,99"` | `12.99` |
+| `"12.99 €"` | `12.99` |
+| `"€12.99"` | `12.99` |
+| `12.99` (number) | `12.99` |
+| `"gratuit"` | `0` |
+| `"abc"` | `null` |
+| `"-5.00"` | `null` |
+| `null` | `null` |
+
+**Logic:**
+1. `null` / `undefined` → `null`
+2. Number → negative returns `null`, otherwise return as-is
+3. String `"gratuit"` → `0`
+4. String → strip `€`, replace `,` with `.`, parse float → `NaN` or negative returns `null`
 
 ---
 
