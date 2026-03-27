@@ -50,4 +50,17 @@ function parsePrice(input) {
   return null;
 }
 
-module.exports = { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice };
+function groupBy(array, key) {
+  if (!array) return {};
+  const result = {};
+  for (const item of array) {
+    if (!(key in item)) throw new TypeError(`Key "${key}" does not exist on object`);
+    const group = item[key];
+    if (group === null || group === undefined) throw new TypeError(`Key "${key}" has a null or undefined value`);
+    if (!result[group]) result[group] = [];
+    result[group].push(item);
+  }
+  return result;
+}
+
+module.exports = { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy };

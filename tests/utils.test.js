@@ -1,4 +1,4 @@
-const { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice } = require('../src/utils');
+const { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy } = require('../src/utils');
 
 describe('capitalize', () => {
   it('should return "Hello" when given "hello"', () => {
@@ -381,5 +381,132 @@ describe('parsePrice', () => {
 
   it('should return null when given null', () => {
     expect(parsePrice(null)).toBeNull();
+  });
+});
+
+describe('groupBy', () => {
+  it('should throw a TypeError when key does not exist on objects', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', role: 'dev' },
+    ];
+    // Act & Assert
+    expect(() => groupBy(input, 'unknown')).toThrow(TypeError);
+  });
+
+  it('should return {} when given null', () => {
+    expect(groupBy(null, 'role')).toEqual({});
+  });
+
+  it('should return {} when given an empty array', () => {
+    expect(groupBy([], 'role')).toEqual({});
+  });
+
+  it('should group objects by any given key', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', department: 'engineering' },
+      { name: 'Bob', department: 'marketing' },
+      { name: 'Charlie', department: 'engineering' },
+    ];
+    // Act
+    const result = groupBy(input, 'department');
+    // Assert
+    expect(result.engineering).toHaveLength(2);
+    expect(result.marketing).toHaveLength(1);
+  });
+
+  it('should group objects into a single group when all items share the same key value', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', role: 'dev' },
+      { name: 'Bob', role: 'dev' },
+    ];
+    // Act
+    const result = groupBy(input, 'role');
+    // Assert
+    expect(Object.keys(result)).toHaveLength(1);
+    expect(result.dev).toHaveLength(2);
+  });
+
+  it('should group 1 and "1" into the same group due to JS key coercion', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', score: 1 },
+      { name: 'Bob', score: '1' },
+    ];
+    // Act
+    const result = groupBy(input, 'score');
+    // Assert — object keys are always strings in JS, so 1 and "1" are the same key
+    expect(Object.keys(result)).toHaveLength(1);
+    expect(result['1']).toHaveLength(2);
+  });
+
+  it('should preserve the order of items within each group', () => {
+    // Arrange
+    const input = [
+      { name: 'Charlie', role: 'dev' },
+      { name: 'Alice', role: 'dev' },
+      { name: 'Bob', role: 'dev' },
+    ];
+    // Act
+    const result = groupBy(input, 'role');
+    // Assert
+    expect(result.dev[0].name).toBe('Charlie');
+    expect(result.dev[1].name).toBe('Alice');
+    expect(result.dev[2].name).toBe('Bob');
+  });
+
+  it('should throw a TypeError when key value is null', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', role: null },
+    ];
+    // Act & Assert
+    expect(() => groupBy(input, 'role')).toThrow(TypeError);
+  });
+
+  it('should correctly group when key value is falsy (0)', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', score: 0 },
+      { name: 'Bob', score: 0 },
+      { name: 'Charlie', score: 1 },
+    ];
+    // Act
+    const result = groupBy(input, 'score');
+    // Assert
+    expect(result[0]).toHaveLength(2);
+    expect(result[1]).toHaveLength(1);
+  });
+
+  it('should not modify the original array', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', role: 'dev' },
+      { name: 'Bob', role: 'design' },
+    ];
+    const original = [...input];
+    // Act
+    groupBy(input, 'role');
+    // Assert
+    expect(input).toEqual(original);
+  });
+
+  it('should group objects by a key with multiple groups', () => {
+    // Arrange
+    const input = [
+      { name: 'Alice', role: 'dev' },
+      { name: 'Bob', role: 'design' },
+      { name: 'Charlie', role: 'dev' },
+    ];
+    // Act
+    const result = groupBy(input, 'role');
+    // Assert
+    expect(result.dev).toHaveLength(2);
+    expect(result.design).toHaveLength(1);
+    expect(result.dev[0].name).toBe('Alice');
+    expect(result.dev[1].name).toBe('Charlie');
+    expect(result.design[0].name).toBe('Bob');
   });
 });
