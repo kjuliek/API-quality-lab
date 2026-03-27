@@ -31,6 +31,8 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
 - [A4 — TDD: sortStudents](#a4--tdd-sortstudents)
   - [Red/Green cycles](#redgreen-cycles)
 - [A5 — parsePrice](#a5--parseprice)
+- [A6 — groupBy](#a6--groupby)
+  - [Red/Green cycles](#redgreen-cycles-1)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -76,11 +78,11 @@ npm start
 src/
   app.js         # Express config: routes + middleware (no listen)
   server.js      # Starts the server on port 3000
-  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents
+  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
 tests/
   app.test.js        # HTTP tests with Supertest
-  utils.test.js      # Unit tests for utility functions (50 tests)
+  utils.test.js      # Unit tests for utility functions (60+ tests)
   validators.test.js # Unit tests for validators (23 tests)
 docs/
   screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
@@ -399,6 +401,96 @@ parsePrice(input)
 2. Number → negative returns `null`, otherwise return as-is
 3. String `"gratuit"` → `0`
 4. String → strip `€`, replace `,` with `.`, parse float → `NaN` or negative returns `null`
+
+---
+
+## A6 — groupBy
+
+Groups an array of objects by the value of a given key. Built using TDD.
+
+```js
+groupBy(array, key)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `array` | `array` | Array of objects to group |
+| `key` | `string` | The key to group by |
+
+**Tests written:**
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should group objects by a key with multiple groups | RED → GREEN |
+| 2 | should group objects by any given key | RED → GREEN |
+| 3 | should return `{}` when given an empty array | free test |
+| 4 | should return `{}` when given null | RED → GREEN |
+| 5 | should throw a TypeError when key does not exist on objects | RED → GREEN |
+| 6 | should correctly group when key value is falsy (0) | free test |
+| 7 | should throw a TypeError when key value is null | RED → GREEN |
+| 8 | should preserve the order of items within each group | free test |
+| 9 | should group 1 and "1" into the same group (JS key coercion) | RED → GREEN |
+| 10 | should not modify the original array | free test |
+
+### Red/Green cycles
+
+**Test 1 — multiple groups**
+
+RED: function didn't exist → `TypeError: groupBy is not a function`
+
+![groupBy multiple groups RED](docs/screenshots/a6-group-by-multiple-groups-red.png)
+
+GREEN: implemented with `for...of` loop, hardcoded `item.role`.
+
+---
+
+**Test 2 — any key**
+
+RED: `sortBy` hardcoded to `role` → result grouped by `role` instead of `department`.
+
+![groupBy any key RED](docs/screenshots/a6-group-by-any-key-red.png)
+
+GREEN: replaced `item.role` with `item[key]`.
+
+---
+
+**Test 4 — null input**
+
+RED: `for...of null` → `TypeError: array is not iterable`
+
+![groupBy null input RED](docs/screenshots/a6-null-input-red.png)
+
+GREEN: added `if (!array) return {}` guard.
+
+---
+
+**Test 5 — unknown key**
+
+RED: function returned `{ undefined: [...] }` instead of throwing.
+
+![groupBy unknown key RED](docs/screenshots/a6-unknown-key-red.png)
+
+GREEN: added `if (!(key in item)) throw new TypeError(...)`.
+
+---
+
+**Test 7 — null key value**
+
+RED: function grouped items under `"null"` instead of throwing.
+
+![groupBy null key value RED](docs/screenshots/a6-null-key-value-red.png)
+
+GREEN: added `if (group === null || group === undefined) throw new TypeError(...)`.
+
+---
+
+**Test 9 — type coercion**
+
+RED: `1` and `"1"` were expected to be different groups but JS coerces object keys to strings.
+
+![groupBy type coercion RED](docs/screenshots/a6-type-coercion-red.png)
+
+GREEN: updated the test to document the real behavior — `1` and `"1"` end up in the same group `"1"`. No code change needed.
 
 ---
 
