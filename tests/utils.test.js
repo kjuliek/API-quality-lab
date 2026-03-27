@@ -240,4 +240,9 @@ describe('clamp', () => {
   it('should return -3 when value is -3 and range is [-5, -1]', () => {
     expect(clamp(-3, -5, -1)).toBe(-3);
   });
+
+  it('should throw a TypeError when value is not a number', () => {
+    expect(() => clamp('a', 0, 10)).toThrow(TypeError);
+    expect(() => clamp('a', 0, 10)).toThrow('value, min and max must be numbers');
+  });
 });

@@ -25,6 +25,9 @@ function slugify(text) {
 }
 
 function clamp(value, min, max) {
+  if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {
+    throw new TypeError('value, min and max must be numbers');
+  }
   return Math.min(Math.max(value, min), max);
 }
 
