@@ -68,7 +68,7 @@ src/
   utils.js    # Utility functions: capitalize, calculateAverage, slugify, clamp
 tests/
   app.test.js   # HTTP tests with Supertest
-  utils.test.js # Unit tests for utility functions (16 tests)
+  utils.test.js # Unit tests for utility functions (31 tests)
 ```
 
 ## Why separate app.js and server.js?
@@ -79,11 +79,11 @@ tests/
 
 ## A1 — Utility Functions
 
-Unit tests for pure utility functions. Each function is tested with at least 4 cases covering normal inputs, edge cases, and invalid inputs. Tests follow the **AAA pattern** (Arrange / Act / Assert) and the `should [result] when [condition]` naming convention.
+Unit tests for pure utility functions. Each function is tested across normal inputs, edge cases, and invalid inputs. Tests follow the **AAA pattern** (Arrange / Act / Assert) and the `should [result] when [condition]` naming convention.
 
 ### capitalize
 
-Uppercases the first letter, lowercases the rest.
+Uppercases the first alphabetic character, lowercases the rest.
 
 | Input | Expected output |
 |---|---|
@@ -91,10 +91,13 @@ Uppercases the first letter, lowercases the rest.
 | `"WORLD"` | `"World"` |
 | `""` | `""` |
 | `null` | `""` |
+| `"a"` | `"A"` |
+| `"hello2world"` | `"Hello2world"` |
+| `"!hello"` | `"!Hello"` |
 
 ### calculateAverage
 
-Returns the average of an array of numbers, rounded to 2 decimal places.
+Returns the average of an array of numbers, rounded to 2 decimal places. Throws a `TypeError` if the array contains a non-number.
 
 | Input | Expected output |
 |---|---|
@@ -102,10 +105,14 @@ Returns the average of an array of numbers, rounded to 2 decimal places.
 | `[15]` | `15` |
 | `[]` | `0` |
 | `null` | `0` |
+| `[-10, -5]` | `-7.5` |
+| `[1, 2]` | `1.5` |
+| `[1.005, 1.006]` | `1.01` |
+| `[1, 'abc', 3]` | throws `TypeError` |
 
 ### slugify
 
-Transforms a string into a URL-friendly slug: lowercase, spaces replaced by dashes, special characters removed.
+Transforms a string into a URL-friendly slug: special characters removed first, then lowercase, spaces replaced by dashes, leading/trailing dashes stripped.
 
 | Input | Expected output |
 |---|---|
@@ -113,6 +120,10 @@ Transforms a string into a URL-friendly slug: lowercase, spaces replaced by dash
 | `" Spaces Everywhere "` | `"spaces-everywhere"` |
 | `"C'est l'ete !"` | `"cest-lete"` |
 | `""` | `""` |
+| `"hello   world"` | `"hello-world"` |
+| `"!!!"` | `""` |
+| `"Hello 123 World"` | `"hello-123-world"` |
+| `"hello ! world"` | `"hello-world"` |
 
 ### clamp
 
@@ -124,6 +135,9 @@ Constrains a value between a minimum and a maximum.
 | `clamp(-5, 0, 10)` | `0` |
 | `clamp(15, 0, 10)` | `10` |
 | `clamp(0, 0, 0)` | `0` |
+| `clamp(0, 0, 10)` | `0` |
+| `clamp(10, 0, 10)` | `10` |
+| `clamp(-3, -5, -1)` | `-3` |
 
 ---
 
@@ -138,7 +152,6 @@ Fix: explicitly declare the Node.js globals in `eslint.config.js` using the `glo
 ```js
 const globals = require('globals');
 
-// inside the config object:
 languageOptions: {
   globals: {
     ...globals.node,
@@ -154,13 +167,37 @@ Input `"C'est l'ete !"` was producing `"cest-lete-"` instead of `"cest-lete"`.
 
 Root cause: the space before `!` was converted to `-`, then `!` was removed — leaving a trailing dash.
 
-Fix: add a final `.replace(/^-+|-+$/g, '')` step to strip leading and trailing dashes after cleanup:
+Fix: add a `.replace(/^-+|-+$/g, '')` step to strip leading and trailing dashes after cleanup.
+
+---
+
+**slugify — double dash when a special character is surrounded by spaces**
+
+Input `"hello ! world"` was producing `"hello--world"` instead of `"hello-world"`.
+
+Root cause: spaces were replaced by dashes before special characters were removed — `"hello-!-world"` → `"hello--world"`.
+
+Fix: remove special characters **before** replacing spaces with dashes:
 
 ```js
 return text
   .trim()
   .toLowerCase()
-  .replace(/\s+/g, '-')
-  .replace(/[^a-z0-9-]/g, '')
-  .replace(/^-+|-+$/g, ''); // remove leading/trailing dashes
+  .replace(/[^a-z0-9\s-]/g, '') // remove special chars first
+  .replace(/\s+/g, '-')          // then replace spaces
+  .replace(/^-+|-+$/g, '');      // strip leading/trailing dashes
+```
+
+---
+
+**capitalize — special character at the start**
+
+`"!hello"` was producing `"!hello"` instead of `"!Hello"` because `charAt(0)` was targeting `!`, not the first letter.
+
+Fix: use `str.search(/[a-zA-Z]/)` to find the index of the first alphabetic character:
+
+```js
+const index = str.search(/[a-zA-Z]/);
+if (index === -1) return str;
+return str.slice(0, index) + str[index].toUpperCase() + str.slice(index + 1).toLowerCase();
 ```
