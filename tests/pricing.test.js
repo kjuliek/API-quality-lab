@@ -1,4 +1,4 @@
-const { calculateDeliveryFee, applyPromoCode } = require('../src/pricing');
+const { calculateDeliveryFee, applyPromoCode, calculateSurge } = require('../src/pricing');
 
 describe('calculateDeliveryFee', () => {
   it('should return 2.00 when distance is 2 km and weight is 1 kg', () => {
@@ -156,5 +156,59 @@ describe('applyPromoCode', () => {
 
   it('should throw a TypeError when subtotal is not a number', () => {
     expect(() => applyPromoCode('50', 'BIENVENUE20', promoCodes)).toThrow(TypeError);
+  });
+});
+
+describe('calculateSurge', () => {
+  it('should return 1.0 on Tuesday at 15h (normal)', () => {
+    expect(calculateSurge(15, 2)).toBe(1.0);
+  });
+
+  it('should return 1.3 on Wednesday at 12h30 (lunch)', () => {
+    expect(calculateSurge(12.5, 3)).toBe(1.3);
+  });
+
+  it('should return 1.5 on Thursday at 20h (dinner)', () => {
+    expect(calculateSurge(20, 4)).toBe(1.5);
+  });
+
+  it('should return 1.8 on Friday at 20h (Fri-Sat evening)', () => {
+    expect(calculateSurge(20, 5)).toBe(1.8);
+  });
+
+  it('should return 1.8 on Saturday at 20h (Fri-Sat evening)', () => {
+    expect(calculateSurge(20, 6)).toBe(1.8);
+  });
+
+  it('should return 1.2 on Sunday at 14h', () => {
+    expect(calculateSurge(14, 0)).toBe(1.2);
+  });
+
+  it('should return 1.5 on Saturday at 12h30 (lunch)', () => {
+    expect(calculateSurge(12.5, 6)).toBe(1.5);
+  });
+
+  it('should return 1.2 on Saturday at 15h (normal)', () => {
+    expect(calculateSurge(15, 6)).toBe(1.2);
+  });
+
+  it('should return 0 on Monday at 22h (closed)', () => {
+    expect(calculateSurge(22, 1)).toBe(0);
+  });
+
+  it('should return 0 on Monday at 9h (before opening)', () => {
+    expect(calculateSurge(9, 1)).toBe(0);
+  });
+
+  it('should return 1.3 on Monday at 11h30 (start of lunch)', () => {
+    expect(calculateSurge(11.5, 1)).toBe(1.3);
+  });
+
+  it('should return 1.3 on Friday at 11h30 (lunch)', () => {
+    expect(calculateSurge(11.5, 5)).toBe(1.3);
+  });
+
+  it('should return 1.5 on Monday at 18h (start of dinner)', () => {
+    expect(calculateSurge(18, 1)).toBe(1.5);
   });
 });

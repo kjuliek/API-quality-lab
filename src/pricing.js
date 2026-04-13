@@ -32,4 +32,14 @@ function applyPromoCode(subtotal, promoCode, promoCodes) {
   return calculateDiscount(subtotal, [{ type: promo.type, value: promo.value }]);
 }
 
-module.exports = { calculateDeliveryFee, applyPromoCode };
+function calculateSurge(hour, dayOfWeek) {
+  if (hour < 10 || hour >= 22) return 0;
+  if (dayOfWeek === 6 && hour >= 11.5 && hour < 14) return 1.5;
+  if (hour >= 11.5 && hour < 14) return 1.3;
+  if ((dayOfWeek === 5 || dayOfWeek === 6) && hour >= 18) return 1.8;
+  if (dayOfWeek >= 1 && dayOfWeek <= 4 && hour >= 18) return 1.5;
+  if (dayOfWeek === 0 || dayOfWeek === 6) return 1.2;
+  return 1.0;
+}
+
+module.exports = { calculateDeliveryFee, applyPromoCode, calculateSurge };
