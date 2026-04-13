@@ -37,12 +37,10 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [percentage rules](#percentage-rules)
   - [fixed rules](#fixed-rules)
   - [buyXgetY rules](#buyxgety-rules)
-- [B1 — calculateDeliveryFee](#b1--calculatedeliveryfee)
-  - [Red/Green cycles](#redgreen-cycles-2)
-- [B2 — applyPromoCode](#b2--applypromocode)
-  - [Red/Green cycles](#redgreen-cycles-3)
-- [B3 — calculateSurge](#b3--calculatesurge)
-  - [Red/Green cycles](#redgreen-cycles-4)
+- [B1 — Pricing Engine](#b1--pricing-engine)
+  - [calculateDeliveryFee](#calculatedeliveryfee)
+  - [applyPromoCode](#applypromocode)
+  - [calculateSurge](#calculatesurge)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -677,7 +675,11 @@ GREEN: added `else` branch that throws `TypeError`.
 
 ---
 
-## B1 — calculateDeliveryFee
+## B1 — Pricing Engine
+
+Pricing functions for the delivery system. Built using TDD.
+
+### calculateDeliveryFee
 
 Computes the delivery fee from a distance (km) and weight (kg). Built using TDD.
 
@@ -807,7 +809,7 @@ These were **free tests** — the implementation already covered these cases cor
 
 ---
 
-## B2 — applyPromoCode
+### applyPromoCode
 
 Applies a promo code to a subtotal. Delegates the discount calculation to `calculateDiscount` (A7). Built using TDD.
 
@@ -864,7 +866,7 @@ applyPromoCode(subtotal, promoCode, promoCodes)
 
 Tous les tests ont été écrits avant toute implémentation. 8 tests ont échoué avec `TypeError: applyPromoCode is not a function`. Les 4 tests utilisant `.toThrow()` (tests 5, 6, 7, 8) ont passé accidentellement — le `TypeError` de "not a function" satisfaisait la condition.
 
-![RED phase](docs/screenshots/b2-promo-percentage-fixed-red.png)
+![RED phase](docs/screenshots/b1-promo-percentage-fixed-red.png)
 
 ---
 
@@ -885,7 +887,7 @@ Tous les tests ont été écrits avant toute implémentation. 8 tests ont échou
 
 RED: `promoCodes.find` sur `null` → `TypeError: Cannot read properties of null`
 
-![promoCodes null RED](docs/screenshots/b2-promo-null-promocodes-red.png)
+![promoCodes null RED](docs/screenshots/b1-promo-null-promocodes-red.png)
 
 GREEN: ajout de `if (!promoCodes) return subtotal`.
 
@@ -895,7 +897,7 @@ GREEN: ajout de `if (!promoCodes) return subtotal`.
 
 RED: liste vide → `promoCodes.find` retourne `undefined` → `Error: Promo code not found` au lieu de retourner le subtotal.
 
-![promoCodes empty RED](docs/screenshots/b2-promo-empty-promocodes-red.png)
+![promoCodes empty RED](docs/screenshots/b1-promo-empty-promocodes-red.png)
 
 GREEN: guard étendu à `if (!promoCodes || promoCodes.length === 0) return subtotal`.
 
@@ -911,13 +913,13 @@ Free test — le guard `subtotal < promo.minOrder` utilise `<` (strict), donc l'
 
 RED: `'50' < 0` est `false` en JS → aucune erreur levée, la fonction continuait sans problème.
 
-![subtotal not number RED](docs/screenshots/b2-promo-subtotal-not-number-red.png)
+![subtotal not number RED](docs/screenshots/b1-promo-subtotal-not-number-red.png)
 
 GREEN: ajout de `if (typeof subtotal !== 'number') throw new TypeError(...)`.
 
 ---
 
-## B3 — calculateSurge
+### calculateSurge
 
 Returns the price multiplier based on the time and day of the week. Built using TDD.
 
@@ -964,7 +966,7 @@ calculateSurge(hour, dayOfWeek)
 
 RED: function didn't exist → `TypeError: calculateSurge is not a function`
 
-![normal RED](docs/screenshots/b3-surge-normal-red.png)
+![normal RED](docs/screenshots/b1-surge-normal-red.png)
 
 GREEN: created function, hardcoded `return 1.0`.
 
@@ -974,7 +976,7 @@ GREEN: created function, hardcoded `return 1.0`.
 
 RED: always returned `1.0` instead of `1.3`.
 
-![lunch RED](docs/screenshots/b3-surge-lunch-red.png)
+![lunch RED](docs/screenshots/b1-surge-lunch-red.png)
 
 GREEN: added `if (hour >= 11.5 && hour < 14) return 1.3`.
 
@@ -984,7 +986,7 @@ GREEN: added `if (hour >= 11.5 && hour < 14) return 1.3`.
 
 RED: Thursday 20h returned `1.0` instead of `1.5`.
 
-![dinner RED](docs/screenshots/b3-surge-dinner-red.png)
+![dinner RED](docs/screenshots/b1-surge-dinner-red.png)
 
 GREEN: added `if (dayOfWeek >= 1 && dayOfWeek <= 4 && hour >= 18) return 1.5`.
 
@@ -994,7 +996,7 @@ GREEN: added `if (dayOfWeek >= 1 && dayOfWeek <= 4 && hour >= 18) return 1.5`.
 
 RED: Friday 20h returned `1.0` (not in Mon-Thu range) instead of `1.8`.
 
-![Fri-Sat evening RED](docs/screenshots/b3-surge-fri-sat-evening-red.png)
+![Fri-Sat evening RED](docs/screenshots/b1-surge-fri-sat-evening-red.png)
 
 GREEN: added `if ((dayOfWeek === 5 || dayOfWeek === 6) && hour >= 18) return 1.8` before the dinner rule.
 
@@ -1004,7 +1006,7 @@ GREEN: added `if ((dayOfWeek === 5 || dayOfWeek === 6) && hour >= 18) return 1.8
 
 RED: Sunday 14h returned `1.0` instead of `1.2`.
 
-![Sunday RED](docs/screenshots/b3-surge-sunday-red.png)
+![Sunday RED](docs/screenshots/b1-surge-sunday-red.png)
 
 GREEN: added `if (dayOfWeek === 0) return 1.2`.
 
@@ -1014,7 +1016,7 @@ GREEN: added `if (dayOfWeek === 0) return 1.2`.
 
 RED: Saturday 12h30 returned `1.3` (generic lunch rule) instead of `1.5`.
 
-![Saturday lunch RED](docs/screenshots/b3-surge-saturday-lunch-red.png)
+![Saturday lunch RED](docs/screenshots/b1-surge-saturday-lunch-red.png)
 
 GREEN: added `if (dayOfWeek === 6 && hour >= 11.5 && hour < 14) return 1.5` before the generic lunch rule.
 
@@ -1024,7 +1026,7 @@ GREEN: added `if (dayOfWeek === 6 && hour >= 11.5 && hour < 14) return 1.5` befo
 
 RED: Saturday 15h returned `1.0` instead of `1.2` — Saturday was not in the Sunday guard.
 
-![Saturday normal RED](docs/screenshots/b3-surge-saturday-normal-red.png)
+![Saturday normal RED](docs/screenshots/b1-surge-saturday-normal-red.png)
 
 GREEN: extended guard to `if (dayOfWeek === 0 || dayOfWeek === 6) return 1.2`.
 
@@ -1034,7 +1036,7 @@ GREEN: extended guard to `if (dayOfWeek === 0 || dayOfWeek === 6) return 1.2`.
 
 RED: Monday 22h returned `1.5` (dinner rule) instead of `0`.
 
-![closed RED](docs/screenshots/b3-surge-closed-red.png)
+![closed RED](docs/screenshots/b1-surge-closed-red.png)
 
 GREEN: added `if (hour < 10 || hour >= 22) return 0` as the first check.
 
