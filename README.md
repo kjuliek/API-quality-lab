@@ -47,6 +47,7 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [POST /orders](#post-orders)
   - [GET /orders/:id](#get-ordersid)
   - [POST /promo/validate](#post-promovalidate)
+- [B3 — Code Coverage](#b3--code-coverage)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -1196,6 +1197,44 @@ Validates a promo code against an amount. Returns `{ valid, code, discount, newA
 | 3 | Amount below minOrder → 400 + reason | ✓ |
 | 4 | Unknown code → 404 | ✓ |
 | 5 | No code in body → 400 | ✓ |
+
+---
+
+## B3 — Code Coverage
+
+Coverage is measured with Jest's built-in coverage tool (Istanbul).
+
+```bash
+npm run test:coverage
+```
+
+### Configuration
+
+`package.json` jest config:
+- `collectCoverageFrom: ["src/**/*.js", "!src/server.js"]` — collects from all source files, excludes `server.js` (entry point with no testable logic)
+- `coverageThreshold: { global: { lines: 80, functions: 80, branches: 80, statements: 80 } }` — fails the run if any metric drops below 80%
+- `coverage/` is excluded from git via `.gitignore`
+
+### Result
+
+![B3 coverage GREEN](docs/screenshots/b3-coverage-green.png)
+
+| File | Statements | Branches | Functions | Lines |
+|---|---|---|---|---|
+| app.js | 100% | 100% | 100% | 100% |
+| pricing.js | 100% | 100% | 100% | 100% |
+| promoCodes.js | 100% | 100% | 100% | 100% |
+| utils.js | 96.55% | 95.12% | 100% | 98.3% |
+| validators.js | 100% | 100% | 100% | 100% |
+| orders.js | 96.55% | 100% | 100% | 96.29% |
+| promo.js | 100% | 100% | 100% | 100% |
+| **All files** | **98.3%** | **97.86%** | **100%** | **98.83%** |
+
+All 188 tests pass. Coverage is well above the 80% threshold on every metric.
+
+Two minor uncovered lines remain intentionally untested:
+- `utils.js:50` — final `return null` fallback in `parsePrice`, unreachable with valid inputs
+- `orders.js:40` — `next(err)` in GET `/:id` catch block, no realistic error path through that code
 
 ---
 
