@@ -1,6 +1,7 @@
 const express = require('express');
 const { calculateOrderTotal } = require('../pricing');
 const promoCodes = require('../promoCodes');
+const validateOrderBody = require('../middleware/validateOrderBody');
 
 const router = express.Router();
 let orders = [];
@@ -9,7 +10,7 @@ function resetOrders() {
   orders = [];
 }
 
-router.post('/simulate', (req, res, next) => {
+router.post('/simulate', validateOrderBody, (req, res, next) => {
   try {
     const { items, distance, weight, promoCode, hour, dayOfWeek } = req.body;
     const result = calculateOrderTotal(items, distance, weight, promoCode, promoCodes, hour, dayOfWeek);
@@ -19,7 +20,7 @@ router.post('/simulate', (req, res, next) => {
   }
 });
 
-router.post('/', (req, res, next) => {
+router.post('/', validateOrderBody, (req, res, next) => {
   try {
     const { items, distance, weight, promoCode, hour, dayOfWeek } = req.body;
     const result = calculateOrderTotal(items, distance, weight, promoCode, promoCodes, hour, dayOfWeek);

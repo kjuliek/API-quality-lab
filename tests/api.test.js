@@ -66,6 +66,46 @@ describe('POST /orders/simulate', () => {
     expect(res.body.surge).toBe(1.8);
     expect(res.body.total).toBe(30.40);
   });
+
+  it('should return 400 when items is not an array', async () => {
+    const res = await request(app).post('/orders/simulate').send({
+      items: 'not an array', distance: 5, weight: 2, promoCode: null, hour: 15, dayOfWeek: 2,
+    });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  it('should return 400 when distance is not a number', async () => {
+    const res = await request(app).post('/orders/simulate').send({
+      items: pizzas, distance: 'far', weight: 2, promoCode: null, hour: 15, dayOfWeek: 2,
+    });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  it('should return 400 when weight is not a number', async () => {
+    const res = await request(app).post('/orders/simulate').send({
+      items: pizzas, distance: 5, weight: 'heavy', promoCode: null, hour: 15, dayOfWeek: 2,
+    });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  it('should return 400 when hour is out of range', async () => {
+    const res = await request(app).post('/orders/simulate').send({
+      items: pizzas, distance: 5, weight: 2, promoCode: null, hour: 25, dayOfWeek: 2,
+    });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  it('should return 400 when dayOfWeek is out of range', async () => {
+    const res = await request(app).post('/orders/simulate').send({
+      items: pizzas, distance: 5, weight: 2, promoCode: null, hour: 15, dayOfWeek: 8,
+    });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
 });
 
 describe('POST /orders', () => {
