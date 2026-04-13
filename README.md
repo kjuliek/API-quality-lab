@@ -39,6 +39,8 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [buyXgetY rules](#buyxgety-rules)
 - [B1 — calculateDeliveryFee](#b1--calculatedeliveryfee)
   - [Red/Green cycles](#redgreen-cycles-2)
+- [B2 — applyPromoCode](#b2--applypromocode)
+  - [Red/Green cycles](#redgreen-cycles-3)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -86,12 +88,12 @@ src/
   server.js      # Starts the server on port 3000
   utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
-  pricing.js     # Pricing engine: calculateDeliveryFee
+  pricing.js     # Pricing engine: calculateDeliveryFee, applyPromoCode
 tests/
   app.test.js        # HTTP tests with Supertest
   utils.test.js      # Unit tests for utility functions (60+ tests)
   validators.test.js # Unit tests for validators (23 tests)
-  pricing.test.js    # Unit tests for pricing functions (17 tests)
+  pricing.test.js    # Unit tests for pricing functions (33 tests)
 docs/
   screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
 ```
@@ -800,6 +802,116 @@ GREEN: added `if (distance < 0) throw new TypeError(...)`.
 **Tests 3, 4, 11–17 — boundary and combination cases**
 
 These were **free tests** — the implementation already covered these cases correctly. No code change needed.
+
+---
+
+## B2 — applyPromoCode
+
+Applies a promo code to a subtotal. Delegates the discount calculation to `calculateDiscount` (A7). Built using TDD.
+
+```js
+applyPromoCode(subtotal, promoCode, promoCodes)
+```
+
+**Promo code structure:**
+
+```js
+{ code: 'BIENVENUE20', type: 'percentage', value: 20, minOrder: 15.00, expiresAt: '2026-12-31' }
+```
+
+**Rules:**
+
+| Condition | Behaviour |
+|---|---|
+| `promoCode` is `null` or `""` | Returns subtotal unchanged |
+| `subtotal < 0` | Throws `TypeError` |
+| Code not found in list | Throws `Error` |
+| `expiresAt < today` | Throws `Error` — code expired |
+| `expiresAt === today` | Accepted — still valid |
+| `subtotal < minOrder` | Throws `Error` — order too small |
+| Type `percentage` | Reduces by X% via `calculateDiscount` |
+| Type `fixed` | Reduces by X€ via `calculateDiscount` |
+| Result < 0 | Clamped to `0` (handled by `calculateDiscount`) |
+
+**Tests written:**
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should apply a percentage discount of 20% on 50€ | RED → GREEN |
+| 2 | should apply a fixed discount of 5€ on 30€ | RED → GREEN |
+| 3 | should return the subtotal unchanged when promoCode is null | RED → GREEN |
+| 4 | should return the subtotal unchanged when promoCode is an empty string | RED → GREEN |
+| 5 | should throw a TypeError when subtotal is negative | passed in RED* |
+| 6 | should throw an Error when promo code does not exist | passed in RED* |
+| 7 | should throw an Error when promo code is expired | passed in RED* |
+| 8 | should throw an Error when subtotal is below minOrder | passed in RED* |
+| 9 | should return 0 when fixed discount exceeds subtotal | RED → GREEN |
+| 10 | should return 0 when percentage is 100% | RED → GREEN |
+| 11 | should accept a code that expires today | RED → GREEN |
+| 12 | should return 0 when subtotal is 0 and promoCode is null | RED → GREEN |
+| 13 | should return subtotal unchanged when promoCodes is null | RED → GREEN |
+| 14 | should return subtotal unchanged when promoCodes is empty | RED → GREEN |
+| 15 | should apply discount when subtotal equals minOrder exactly | free test |
+| 16 | should throw a TypeError when subtotal is not a number | RED → GREEN |
+
+*Tests 5, 6, 7, 8 passed during the RED phase because `applyPromoCode is not a function` throws a `TypeError`. Since all four tests use `.toThrow(Error/TypeError)` and `TypeError` is a subclass of `Error`, they were satisfied by the wrong reason.
+
+### Red/Green cycles
+
+**RED — all tests at once**
+
+Tous les tests ont été écrits avant toute implémentation. 8 tests ont échoué avec `TypeError: applyPromoCode is not a function`. Les 4 tests utilisant `.toThrow()` (tests 5, 6, 7, 8) ont passé accidentellement — le `TypeError` de "not a function" satisfaisait la condition.
+
+![RED phase](docs/screenshots/b2-promo-percentage-fixed-red.png)
+
+---
+
+**GREEN — implémentation complète en une passe**
+
+- `if (typeof subtotal !== 'number')` → `TypeError`
+- `if (subtotal < 0)` → `TypeError`
+- `if (!promoCode) return subtotal` → gère `null` et `""`
+- `if (!promoCodes || promoCodes.length === 0) return subtotal` → pas de liste = pas de réduction
+- `promoCodes.find(...)` + `if (!promo)` → `Error` pour code inconnu
+- `if (promo.expiresAt < today)` → `Error` pour code expiré (strict `<` donc aujourd'hui = encore valide)
+- `if (subtotal < promo.minOrder)` → `Error` si commande sous le minimum
+- `calculateDiscount(subtotal, [{ type, value }])` → délègue le calcul, gère déjà le clamp à `0`
+
+---
+
+**Test 13 — promoCodes null**
+
+RED: `promoCodes.find` sur `null` → `TypeError: Cannot read properties of null`
+
+![promoCodes null RED](docs/screenshots/b2-promo-null-promocodes-red.png)
+
+GREEN: ajout de `if (!promoCodes) return subtotal`.
+
+---
+
+**Test 14 — promoCodes vide**
+
+RED: liste vide → `promoCodes.find` retourne `undefined` → `Error: Promo code not found` au lieu de retourner le subtotal.
+
+![promoCodes empty RED](docs/screenshots/b2-promo-empty-promocodes-red.png)
+
+GREEN: guard étendu à `if (!promoCodes || promoCodes.length === 0) return subtotal`.
+
+---
+
+**Test 15 — subtotal === minOrder**
+
+Free test — le guard `subtotal < promo.minOrder` utilise `<` (strict), donc l'égalité exacte est acceptée.
+
+---
+
+**Test 16 — subtotal non-number**
+
+RED: `'50' < 0` est `false` en JS → aucune erreur levée, la fonction continuait sans problème.
+
+![subtotal not number RED](docs/screenshots/b2-promo-subtotal-not-number-red.png)
+
+GREEN: ajout de `if (typeof subtotal !== 'number') throw new TypeError(...)`.
 
 ---
 
