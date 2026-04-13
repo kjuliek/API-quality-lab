@@ -33,6 +33,10 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
 - [A5 — parsePrice](#a5--parseprice)
 - [A6 — groupBy](#a6--groupby)
   - [Red/Green cycles](#redgreen-cycles-1)
+- [A7 — calculateDiscount](#a7--calculatediscount)
+  - [percentage rules](#percentage-rules)
+  - [fixed rules](#fixed-rules)
+  - [buyXgetY rules](#buyxgety-rules)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -78,7 +82,7 @@ npm start
 src/
   app.js         # Express config: routes + middleware (no listen)
   server.js      # Starts the server on port 3000
-  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy
+  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
 tests/
   app.test.js        # HTTP tests with Supertest
@@ -491,6 +495,177 @@ RED: `1` and `"1"` were expected to be different groups but JS coerces object ke
 ![groupBy type coercion RED](docs/screenshots/a6-type-coercion-red.png)
 
 GREEN: updated the test to document the real behavior — `1` and `"1"` end up in the same group `"1"`. No code change needed.
+
+---
+
+## A7 — calculateDiscount
+
+Applies cumulative discount rules to a price. Rules are applied in order. The result cannot be negative.
+
+```js
+calculateDiscount(price, discountRules)
+```
+
+**Rule types:**
+
+| Type | Fields | Description |
+|---|---|---|
+| `percentage` | `value` | Reduces price by a percentage |
+| `fixed` | `value` | Reduces price by a fixed amount |
+| `buyXgetY` | `buy`, `free`, `itemPrice` | Every N items bought, M items are free |
+
+### percentage rules
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should apply a percentage discount | RED → GREEN |
+| 2 | should return original price when percentage value is 0 | free test |
+| 3 | should return 0 when percentage value is 100 | free test |
+| 4 | should return 0 when percentage discount exceeds the price | RED → GREEN |
+| 5 | should apply multiple percentage discounts cumulatively | free test |
+| 6 | should throw a TypeError when percentage value is not a number | RED → GREEN |
+| 7 | should throw a TypeError when percentage value is negative | RED → GREEN |
+| 8 | should throw a TypeError when price is negative | RED → GREEN |
+| 9 | should throw a TypeError when price is null | RED → GREEN |
+| 10 | should throw a TypeError when rules is null | free test |
+| 11 | should return original price when rules is empty | free test |
+
+**Red/Green cycles:**
+
+**Test 1 — percentage discount**
+
+RED: function didn't exist → `TypeError: calculateDiscount is not a function`
+
+![calculateDiscount percentage RED](docs/screenshots/a7-percentage-discount-red.png)
+
+GREEN: implemented loop over rules, handle `percentage` type only.
+
+---
+
+**Test 4 — discount exceeds price**
+
+RED: `value: 150` → result was `-50` instead of `0`.
+
+![calculateDiscount exceeds price RED](docs/screenshots/a7-percentage-exceeds-price-red.png)
+
+GREEN: added `Math.max(0, result)` at the end.
+
+---
+
+**Test 6 — value not a number**
+
+RED: function returned `NaN` silently instead of throwing.
+
+![calculateDiscount value not number RED](docs/screenshots/a7-percentage-value-not-number-red.png)
+
+GREEN: added `typeof rule.value !== 'number'` check.
+
+---
+
+**Test 7 — negative value**
+
+RED: function applied a negative discount (price increased) instead of throwing.
+
+![calculateDiscount negative value RED](docs/screenshots/a7-negative-percentage-value-red.png)
+
+GREEN: added `rule.value < 0` check.
+
+---
+
+**Test 8 — negative price**
+
+RED: function returned a result instead of throwing.
+
+![calculateDiscount negative price RED](docs/screenshots/a7-negative-price-red.png)
+
+GREEN: added `price < 0` guard.
+
+---
+
+**Test 9 — null price**
+
+RED: function returned `NaN` instead of throwing.
+
+![calculateDiscount null price RED](docs/screenshots/a7-null-price-red.png)
+
+GREEN: added `price === null || price === undefined` guard.
+
+### fixed rules
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should apply a fixed discount | RED → GREEN |
+| 2 | should return 0 when fixed discount exceeds the price | free test |
+| 3 | should throw a TypeError when fixed value is negative | RED → GREEN |
+| 4 | should apply percentage then fixed discount in order | free test |
+
+**Red/Green cycles:**
+
+**Test 1 — fixed discount**
+
+RED: `fixed` type not handled → price unchanged, returned `100` instead of `95`.
+
+![calculateDiscount fixed RED](docs/screenshots/a7-fixed-discount-red.png)
+
+GREEN: added `else if (rule.type === 'fixed')` branch.
+
+---
+
+**Test 3 — negative fixed value**
+
+RED: function applied a negative fixed discount (price increased) instead of throwing.
+
+![calculateDiscount negative fixed RED](docs/screenshots/a7-negative-fixed-value-red.png)
+
+GREEN: added `rule.value < 0` check in the `fixed` branch.
+
+### buyXgetY rules
+
+For every group of `buy + free` items, `free` items are free. Quantity is derived from `price / itemPrice`.
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should apply a buyXgetY discount | RED → GREEN |
+| 2 | should return original price when quantity is not enough | free test |
+| 3 | should apply buyXgetY multiple times when quantity allows it | free test |
+| 4 | should apply buyXgetY then percentage in order | free test |
+| 5 | should return original price when free is 0 | free test |
+| 6 | should handle price not divisible by itemPrice | free test |
+| 7 | should throw TypeError when itemPrice is not a number | RED → GREEN |
+| 8 | should throw TypeError when buy is not a number | free test |
+| 9 | should throw TypeError when free is not a number | free test |
+| 10 | should throw TypeError when itemPrice is 0 | free test |
+| 11 | should throw TypeError when buy is 0 | free test |
+
+**Red/Green cycles:**
+
+**Test 1 — buyXgetY discount**
+
+RED: `buyXgetY` type not handled → price unchanged, returned `40` instead of `30`.
+
+![calculateDiscount buyXgetY RED](docs/screenshots/a7-buyxgety-discount-red.png)
+
+GREEN: added `buyXgetY` branch — derive quantity from `price / itemPrice`, compute free items, subtract discount.
+
+---
+
+**Test 7 — itemPrice not a number**
+
+RED: function returned `NaN` silently instead of throwing.
+
+![calculateDiscount buyXgetY itemPrice not number RED](docs/screenshots/a7-buyxgety-itemprice-not-number-red.png)
+
+GREEN: added type checks for `itemPrice`, `buy`, `free` and value checks for `itemPrice > 0` and `buy > 0`.
+
+---
+
+**Unknown rule type**
+
+RED: function silently ignored unknown rule types instead of throwing.
+
+![calculateDiscount unknown rule type RED](docs/screenshots/a7-unknown-rule-type-red.png)
+
+GREEN: added `else` branch that throws `TypeError`.
 
 ---
 
