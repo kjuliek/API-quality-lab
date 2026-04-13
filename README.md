@@ -47,6 +47,8 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
 - [B3 — Code Coverage](#b3--code-coverage)
 - [B4 — Linter](#b4--linter)
 - [C1 — CI Pipeline](#c1--ci-pipeline)
+- [Production considerations](#production-considerations)
+- [Additional improvements](#additional-improvements)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -1148,6 +1150,7 @@ Exposes the pricing engine via HTTP routes. Tests are integration tests — each
 - Routes are registered in `src/routes/` using Express Router
 - All errors are forwarded with `next(err)` and handled by a central error middleware in `app.js`
 - Orders are stored in memory in `orders.js` with a `resetOrders()` function called in `beforeEach` to ensure test isolation
+- Request body validation is handled by `src/middleware/validateOrderBody.js`, applied to both `/orders/simulate` and `POST /orders`. It validates types and ranges for `items` (must be array), `distance`, `weight` (must be numbers), `hour` (0–23), and `dayOfWeek` (0–6)
 
 ### POST /orders/simulate
 
@@ -1162,6 +1165,11 @@ Calculates the order total without saving. Returns `{ subtotal, discount, delive
 | 5 | Distance > 10km → 400 | ✓ |
 | 6 | Closed (23h) → 400 | ✓ |
 | 7 | Surge Friday 20h → surge = 1.8, total = 30.40 | ✓ |
+| 8 | items not an array → 400 | ✓ |
+| 9 | distance not a number → 400 | ✓ |
+| 10 | weight not a number → 400 | ✓ |
+| 11 | hour out of range → 400 | ✓ |
+| 12 | dayOfWeek out of range → 400 | ✓ |
 
 ### POST /orders
 
@@ -1286,6 +1294,34 @@ The coverage step enforces the 80% threshold configured in `package.json` — th
 ### Result
 
 ![C1 pipeline GREEN](docs/screenshots/c1-pipeline-green.png)
+
+---
+
+## Production considerations
+
+This project is a lab — some design choices are intentional simplifications that would need to be addressed before going to production.
+
+**In-memory storage**
+Orders are stored in a plain JavaScript array. All data is lost on server restart. A production system would use a persistent database (PostgreSQL, MongoDB, etc.) with a proper data access layer.
+
+**No authentication**
+The API has no authentication or authorization. Any client can create or retrieve any order.
+
+**No rate limiting**
+The `/promo/validate` endpoint and order creation are not throttled. A production API would add rate limiting to prevent abuse.
+
+**Hardcoded promo codes**
+Promo codes are defined in `src/promoCodes.js`. Expiration dates are static — updating them requires a code deployment. A production system would manage promo codes in a database with an admin interface.
+
+**Floating-point arithmetic**
+Prices are calculated with JavaScript floating-point numbers and rounded with `toFixed(2)`. For financial applications, integer-based arithmetic (cents) or a dedicated library (e.g. `decimal.js`) would be safer.
+
+---
+
+## Additional improvements
+
+**Request size limit**
+`express.json()` is configured with `{ limit: '1mb' }` to cap payload size and prevent memory exhaustion from oversized requests.
 
 ---
 
