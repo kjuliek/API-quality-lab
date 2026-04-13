@@ -7,46 +7,43 @@
 
 REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and linted with **ESLint**.
 
+## Grading
+
+| Section | Criteria | Points |
+|---|---|---|
+| A | Unit tests (utils + validators) — quality, edge cases | 4 pts |
+| A | TDD sortStudents — Red/Green/Refactor cycle | 2 pts |
+| B | Pricing engine + unit tests (~36 tests) | 5 pts |
+| B | HTTP API + integration tests (~20 tests) | 4 pts |
+| B | Coverage ≥ 80% + linter configured and clean | 2 pts |
+| C | CI pipeline green (lint + tests + coverage) | 2 pts |
+| — | Conventional Commits + clean code | 1 pt |
+| **Total** | | **20 pts** |
+
+## Checklist
+
+- [x] Linter passes with 0 errors
+- [x] All tests pass
+- [x] Coverage ≥ 80%
+- [x] GitHub Actions pipeline is green
+- [x] Conventional Commits are followed
+- [x] `.gitignore` is correct
+
 ## Table of Contents
 
+- [Grading](#grading)
 - [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Commands](#commands)
-- [Structure](#structure)
-- [Why separate app.js and server.js?](#why-separate-appjs-and-serverjs)
 - [A1 — Utility Functions](#a1--utility-functions)
-  - [capitalize](#capitalize)
-  - [calculateAverage](#calculateaverage)
-  - [slugify](#slugify)
-  - [clamp](#clamp)
 - [A2 — Validators](#a2--validators)
-  - [isValidEmail](#isvalidemail)
-  - [isValidPassword](#isvalidpassword)
-  - [isValidAge](#isvalidage)
 - [A3 — Reading failing tests](#a3--reading-failing-tests)
-  - [Bug 1 — calculateAverage: division replaced by multiplication](#bug-1--calculateaverage-division-replaced-by-multiplication)
-  - [Bug 2 — isValidEmail: missing @ check](#bug-2--isvalidemail-missing--check)
-  - [Bug 3 — capitalize: missing toLowerCase](#bug-3--capitalize-missing-tolowercase)
 - [A4 — TDD: sortStudents](#a4--tdd-sortstudents)
-  - [Red/Green cycles](#redgreen-cycles)
 - [A5 — parsePrice](#a5--parseprice)
 - [A6 — groupBy](#a6--groupby)
-  - [Red/Green cycles](#redgreen-cycles-1)
 - [A7 — calculateDiscount](#a7--calculatediscount)
-  - [percentage rules](#percentage-rules)
-  - [fixed rules](#fixed-rules)
-  - [buyXgetY rules](#buyxgety-rules)
 - [B1 — Pricing Engine](#b1--pricing-engine)
-  - [calculateDeliveryFee](#calculatedeliveryfee)
-  - [applyPromoCode](#applypromocode)
-  - [calculateSurge](#calculatesurge)
-  - [calculateOrderTotal](#calculateordertotal)
 - [B2 — HTTP API](#b2--http-api)
-  - [POST /orders/simulate](#post-orderssimulate)
-  - [POST /orders](#post-orders)
-  - [GET /orders/:id](#get-ordersid)
-  - [POST /promo/validate](#post-promovalidate)
 - [B3 — Code Coverage](#b3--code-coverage)
 - [B4 — Linter](#b4--linter)
 - [C1 — CI Pipeline](#c1--ci-pipeline)
@@ -1366,3 +1363,4 @@ const index = str.search(/[a-zA-Z]/);
 if (index === -1) return str;
 return str.slice(0, index) + str[index].toUpperCase() + str.slice(index + 1).toLowerCase();
 ```
+
