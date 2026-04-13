@@ -48,6 +48,7 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [GET /orders/:id](#get-ordersid)
   - [POST /promo/validate](#post-promovalidate)
 - [B3 — Code Coverage](#b3--code-coverage)
+- [B4 — Linter](#b4--linter)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -1235,6 +1236,36 @@ All 188 tests pass. Coverage is well above the 80% threshold on every metric.
 Two minor uncovered lines remain intentionally untested:
 - `utils.js:50` — final `return null` fallback in `parsePrice`, unreachable with valid inputs
 - `orders.js:40` — `next(err)` in GET `/:id` catch block, no realistic error path through that code
+
+---
+
+## B4 — Linter
+
+ESLint v9 with flat config (`eslint.config.js`).
+
+```bash
+npm run lint
+```
+
+### Configuration
+
+- `js.configs.recommended` — all recommended rules enabled by default
+- `no-unused-vars: error` with `argsIgnorePattern: '^_'` — unused variables are errors; parameters prefixed with `_` are explicitly ignored (e.g. `_next` in Express error handlers)
+- `no-unused-expressions: error` — dead code expressions flagged as errors
+- `no-console: off` — console calls allowed (API logging)
+- Node.js globals declared via the `globals` package so ESLint doesn't flag `require`, `module`, `process`, etc.
+
+### Red/Green cycle
+
+**RED** — after switching `no-unused-vars` from `warn` to `error`, ESLint flagged `next` in the Express error handler middleware (`app.js:17`):
+
+![B4 lint error](docs/screenshots/b4-lint-unused-next-error.png)
+
+**Fix** — renamed the parameter to `_next` to signal it is intentionally unused. Added `argsIgnorePattern: '^_'` to the rule config so ESLint accepts this convention.
+
+**GREEN** — `npm run lint` exits with 0 errors:
+
+![B4 lint GREEN](docs/screenshots/b4-lint-green.png)
 
 ---
 
