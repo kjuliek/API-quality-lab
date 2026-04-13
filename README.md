@@ -49,6 +49,7 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [POST /promo/validate](#post-promovalidate)
 - [B3 — Code Coverage](#b3--code-coverage)
 - [B4 — Linter](#b4--linter)
+- [C1 — CI Pipeline](#c1--ci-pipeline)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -1266,6 +1267,28 @@ npm run lint
 **GREEN** — `npm run lint` exits with 0 errors:
 
 ![B4 lint GREEN](docs/screenshots/b4-lint-green.png)
+
+---
+
+## C1 — CI Pipeline
+
+GitHub Actions pipeline defined in `.github/workflows/ci.yml`.
+
+Triggers on every push and pull request to `main`.
+
+### Steps
+
+| Step | Command |
+|---|---|
+| Install dependencies | `npm ci` |
+| Lint | `npm run lint` |
+| Tests + Coverage | `npm run test:coverage` |
+
+The coverage step enforces the 80% threshold configured in `package.json` — the pipeline fails automatically if any metric drops below it.
+
+### Result
+
+![C1 pipeline GREEN](docs/screenshots/c1-pipeline-green.png)
 
 ---
 
