@@ -15,4 +15,21 @@ function calculateDeliveryFee(distance, weight) {
   return fee;
 }
 
-module.exports = { calculateDeliveryFee };
+function applyPromoCode(subtotal, promoCode, promoCodes) {
+  if (typeof subtotal !== 'number') throw new TypeError('Subtotal must be a number');
+  if (subtotal < 0) throw new TypeError('Subtotal cannot be negative');
+  if (!promoCode) return subtotal;
+  if (!promoCodes || promoCodes.length === 0) return subtotal;
+
+  const promo = promoCodes.find(p => p.code === promoCode);
+  if (!promo) throw new Error(`Promo code "${promoCode}" not found`);
+
+  const today = new Date().toISOString().split('T')[0];
+  if (promo.expiresAt < today) throw new Error(`Promo code "${promoCode}" has expired`);
+  if (subtotal < promo.minOrder) throw new Error(`Minimum order of ${promo.minOrder}€ required`);
+
+  const { calculateDiscount } = require('./utils');
+  return calculateDiscount(subtotal, [{ type: promo.type, value: promo.value }]);
+}
+
+module.exports = { calculateDeliveryFee, applyPromoCode };
