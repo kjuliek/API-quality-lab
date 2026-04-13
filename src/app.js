@@ -3,7 +3,7 @@ const { router: ordersRouter } = require('./routes/orders');
 const promoRouter = require('./routes/promo');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Routes
 app.get('/health', (req, res) => {
