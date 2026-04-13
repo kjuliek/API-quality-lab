@@ -1,4 +1,4 @@
-const { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy } = require('../src/utils');
+const { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount } = require('../src/utils');
 
 describe('capitalize', () => {
   it('should return "Hello" when given "hello"', () => {
@@ -508,5 +508,137 @@ describe('groupBy', () => {
     expect(result.dev[0].name).toBe('Alice');
     expect(result.dev[1].name).toBe('Charlie');
     expect(result.design[0].name).toBe('Bob');
+  });
+});
+
+describe('calculateDiscount', () => {
+  it('should apply buyXgetY then percentage in order', () => {
+    // 4 items at 10€ = 40€, buy 3 get 1 free → 30€, then -10% → 27€
+    expect(calculateDiscount(40, [
+      { type: 'buyXgetY', buy: 3, free: 1, itemPrice: 10 },
+      { type: 'percentage', value: 10 },
+    ])).toBe(27);
+  });
+
+  it('should apply buyXgetY multiple times when quantity allows it', () => {
+    // 8 items at 10€ = 80€, buy 3 get 1 free → 2 groups of 4 → 2 free items → discount 20€ → 60€
+    expect(calculateDiscount(80, [{ type: 'buyXgetY', buy: 3, free: 1, itemPrice: 10 }])).toBe(60);
+  });
+
+  it('should return original price when quantity is not enough to trigger buyXgetY', () => {
+    // 3 items at 10€ = 30€, need 4 to get 1 free → no discount
+    expect(calculateDiscount(30, [{ type: 'buyXgetY', buy: 3, free: 1, itemPrice: 10 }])).toBe(30);
+  });
+
+  it('should return original price when buyXgetY free is 0', () => {
+    expect(calculateDiscount(40, [{ type: 'buyXgetY', buy: 3, free: 0, itemPrice: 10 }])).toBe(40);
+  });
+
+  it('should handle price not divisible by itemPrice', () => {
+    // 35€ / 10€ = 3 full items, buy 3 get 1 free → not enough for a free item → price unchanged
+    expect(calculateDiscount(35, [{ type: 'buyXgetY', buy: 3, free: 1, itemPrice: 10 }])).toBe(35);
+  });
+
+  it('should throw a TypeError when buyXgetY buy is not a number', () => {
+    expect(() => calculateDiscount(40, [{ type: 'buyXgetY', buy: 'abc', free: 1, itemPrice: 10 }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when buyXgetY free is not a number', () => {
+    expect(() => calculateDiscount(40, [{ type: 'buyXgetY', buy: 3, free: 'abc', itemPrice: 10 }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when buyXgetY itemPrice is 0', () => {
+    expect(() => calculateDiscount(40, [{ type: 'buyXgetY', buy: 3, free: 1, itemPrice: 0 }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when buyXgetY buy is 0', () => {
+    expect(() => calculateDiscount(40, [{ type: 'buyXgetY', buy: 0, free: 1, itemPrice: 10 }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when buyXgetY itemPrice is not a number', () => {
+    expect(() => calculateDiscount(40, [{ type: 'buyXgetY', buy: 3, free: 1, itemPrice: 'abc' }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when rule type is unknown', () => {
+    expect(() => calculateDiscount(100, [{ type: 'unknown', value: 10 }])).toThrow(TypeError);
+  });
+
+  it('should apply a buyXgetY discount', () => {
+    // 4 items at 10€ = 40€, buy 3 get 1 free → 1 free item → discount 10€ → 30€
+    expect(calculateDiscount(40, [{ type: 'buyXgetY', buy: 3, free: 1, itemPrice: 10 }])).toBe(30);
+  });
+
+  it('should apply percentage then fixed discount in order', () => {
+    // 100 - 10% = 90, then 90 - 5 = 85
+    expect(calculateDiscount(100, [
+      { type: 'percentage', value: 10 },
+      { type: 'fixed', value: 5 },
+    ])).toBe(85);
+  });
+
+  it('should throw a TypeError when fixed value is negative', () => {
+    expect(() => calculateDiscount(100, [{ type: 'fixed', value: -5 }])).toThrow(TypeError);
+  });
+
+  it('should return 0 when fixed discount exceeds the price', () => {
+    expect(calculateDiscount(10, [{ type: 'fixed', value: 50 }])).toBe(0);
+  });
+
+  it('should apply a fixed discount', () => {
+    expect(calculateDiscount(100, [{ type: 'fixed', value: 5 }])).toBe(95);
+  });
+
+  it('should return original price when rules is empty', () => {
+    expect(calculateDiscount(100, [])).toBe(100);
+  });
+
+  it('should throw a TypeError when rules is null', () => {
+    expect(() => calculateDiscount(100, null)).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when price is null', () => {
+    expect(() => calculateDiscount(null, [{ type: 'percentage', value: 10 }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when price is negative', () => {
+    expect(() => calculateDiscount(-10, [{ type: 'percentage', value: 10 }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when percentage value is not a number', () => {
+    expect(() => calculateDiscount(100, [{ type: 'percentage', value: 'abc' }])).toThrow(TypeError);
+  });
+
+  it('should throw a TypeError when percentage value is negative', () => {
+    expect(() => calculateDiscount(100, [{ type: 'percentage', value: -10 }])).toThrow(TypeError);
+  });
+
+  it('should apply multiple percentage discounts cumulatively', () => {
+    // 100 - 10% = 90, then 90 - 20% = 72
+    expect(calculateDiscount(100, [
+      { type: 'percentage', value: 10 },
+      { type: 'percentage', value: 20 },
+    ])).toBe(72);
+  });
+
+  it('should return 0 when percentage discount exceeds the price', () => {
+    expect(calculateDiscount(100, [{ type: 'percentage', value: 150 }])).toBe(0);
+  });
+
+  it('should return 0 when percentage value is 100', () => {
+    expect(calculateDiscount(100, [{ type: 'percentage', value: 100 }])).toBe(0);
+  });
+
+  it('should return original price when percentage value is 0', () => {
+    expect(calculateDiscount(100, [{ type: 'percentage', value: 0 }])).toBe(100);
+  });
+
+  it('should apply a percentage discount', () => {
+    // Arrange
+    const price = 100;
+    const rules = [{ type: 'percentage', value: 10 }];
+    // Act
+    const result = calculateDiscount(price, rules);
+    // Assert
+    expect(result).toBe(90);
   });
 });

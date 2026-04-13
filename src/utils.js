@@ -63,4 +63,33 @@ function groupBy(array, key) {
   return result;
 }
 
-module.exports = { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy };
+function calculateDiscount(price, rules) {
+  if (price === null || price === undefined) throw new TypeError('Price cannot be null');
+  if (price < 0) throw new TypeError('Price cannot be negative');
+  let result = price;
+  for (const rule of rules) {
+    if (rule.type === 'percentage') {
+      if (typeof rule.value !== 'number') throw new TypeError('Percentage value must be a number');
+      if (rule.value < 0) throw new TypeError('Percentage value cannot be negative');
+      result -= result * (rule.value / 100);
+    } else if (rule.type === 'fixed') {
+      if (typeof rule.value !== 'number') throw new TypeError('Fixed value must be a number');
+      if (rule.value < 0) throw new TypeError('Fixed value cannot be negative');
+      result -= rule.value;
+    } else if (rule.type === 'buyXgetY') {
+      if (typeof rule.itemPrice !== 'number') throw new TypeError('buyXgetY itemPrice must be a number');
+      if (typeof rule.buy !== 'number') throw new TypeError('buyXgetY buy must be a number');
+      if (typeof rule.free !== 'number') throw new TypeError('buyXgetY free must be a number');
+      if (rule.itemPrice <= 0) throw new TypeError('buyXgetY itemPrice must be greater than 0');
+      if (rule.buy <= 0) throw new TypeError('buyXgetY buy must be greater than 0');
+      const quantity = Math.floor(result / rule.itemPrice);
+      const freeItems = Math.floor(quantity / (rule.buy + rule.free)) * rule.free;
+      result -= freeItems * rule.itemPrice;
+    } else {
+      throw new TypeError(`Unknown rule type: ${rule.type}`);
+    }
+  }
+  return Math.max(0, result);
+}
+
+module.exports = { capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount };
