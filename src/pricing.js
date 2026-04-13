@@ -42,4 +42,25 @@ function calculateSurge(hour, dayOfWeek) {
   return 1.0;
 }
 
-module.exports = { calculateDeliveryFee, applyPromoCode, calculateSurge };
+function calculateOrderTotal(items, distance, weight, promoCode, promoCodes, hour, dayOfWeek) {
+  if (!items || items.length === 0) throw new Error('Order must contain at least one item');
+  for (const item of items) {
+    if (item.quantity <= 0) throw new Error('Item quantity must be greater than 0');
+  }
+  const subtotal = items.reduce((sum, item) => item.price * item.quantity + sum, 0);
+  const discountedSubtotal = applyPromoCode(subtotal, promoCode, promoCodes);
+  const discount = parseFloat((subtotal - discountedSubtotal).toFixed(2));
+  const deliveryFee = calculateDeliveryFee(distance, weight);
+  const surge = calculateSurge(hour, dayOfWeek);
+  if (surge === 0) throw new Error('Restaurant is closed at this time');
+  const total = parseFloat((discountedSubtotal + deliveryFee * surge).toFixed(2));
+  return {
+    subtotal: parseFloat(subtotal.toFixed(2)),
+    discount,
+    deliveryFee: parseFloat(deliveryFee.toFixed(2)),
+    surge,
+    total,
+  };
+}
+
+module.exports = { calculateDeliveryFee, applyPromoCode, calculateSurge, calculateOrderTotal };

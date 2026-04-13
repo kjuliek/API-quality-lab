@@ -1,4 +1,4 @@
-const { calculateDeliveryFee, applyPromoCode, calculateSurge } = require('../src/pricing');
+const { calculateDeliveryFee, applyPromoCode, calculateSurge, calculateOrderTotal } = require('../src/pricing');
 
 describe('calculateDeliveryFee', () => {
   it('should return 2.00 when distance is 2 km and weight is 1 kg', () => {
@@ -210,5 +210,93 @@ describe('calculateSurge', () => {
 
   it('should return 1.5 on Monday at 18h (start of dinner)', () => {
     expect(calculateSurge(18, 1)).toBe(1.5);
+  });
+});
+
+describe('calculateOrderTotal', () => {
+  const promoCodes = [
+    { code: 'BIENVENUE20', type: 'percentage', value: 20, minOrder: 15.00, expiresAt: '2026-12-31' },
+    { code: 'FIXED5', type: 'fixed', value: 5, minOrder: 10.00, expiresAt: '2026-12-31' },
+  ];
+
+  const pizzas = [{ name: 'Pizza', price: 12.50, quantity: 2 }];
+
+  it('should return correct totals for 2 pizzas, 5km, 2kg, Tuesday 15h', () => {
+    // subtotal = 2 * 12.50 = 25.00
+    // deliveryFee = 2.00 + (5-3)*0.50 = 3.00
+    // surge = 1.0, discount = 0
+    // total = 25.00 + 3.00 * 1.0 = 28.00
+    const result = calculateOrderTotal(pizzas, 5, 2, null, promoCodes, 15, 2);
+    expect(result).toEqual({ subtotal: 25.00, discount: 0, deliveryFee: 3.00, surge: 1.0, total: 28.00 });
+  });
+
+  it('should apply BIENVENUE20 promo and return discount = 5, total = 23', () => {
+    // subtotal = 25.00, discount = 25 * 20% = 5.00
+    // deliveryFee = 3.00, surge = 1.0
+    // total = 20.00 + 3.00 = 23.00
+    const result = calculateOrderTotal(pizzas, 5, 2, 'BIENVENUE20', promoCodes, 15, 2);
+    expect(result).toEqual({ subtotal: 25.00, discount: 5.00, deliveryFee: 3.00, surge: 1.0, total: 23.00 });
+  });
+
+  it('should apply surge 1.8 on Friday at 20h and return total = 30.40', () => {
+    // subtotal = 25.00, discount = 0
+    // deliveryFee = 3.00, surge = 1.8
+    // total = 25.00 + 3.00 * 1.8 = 30.40
+    const result = calculateOrderTotal(pizzas, 5, 2, null, promoCodes, 20, 5);
+    expect(result).toEqual({ subtotal: 25.00, discount: 0, deliveryFee: 3.00, surge: 1.8, total: 30.40 });
+  });
+
+  it('should throw an Error when items is empty', () => {
+    expect(() => calculateOrderTotal([], 5, 2, null, promoCodes, 15, 2)).toThrow(Error);
+  });
+
+  it('should throw an Error when an item has quantity 0', () => {
+    const items = [{ name: 'Pizza', price: 12.50, quantity: 0 }];
+    expect(() => calculateOrderTotal(items, 5, 2, null, promoCodes, 15, 2)).toThrow(Error);
+  });
+
+  it('should throw an Error when an item has a negative price', () => {
+    const items = [{ name: 'Pizza', price: -5, quantity: 2 }];
+    expect(() => calculateOrderTotal(items, 5, 2, null, promoCodes, 15, 2)).toThrow(Error);
+  });
+
+  it('should throw an Error when the restaurant is closed (23h)', () => {
+    expect(() => calculateOrderTotal(pizzas, 5, 2, null, promoCodes, 23, 2)).toThrow(Error);
+  });
+
+  it('should throw a RangeError when distance exceeds 10km', () => {
+    expect(() => calculateOrderTotal(pizzas, 15, 2, null, promoCodes, 15, 2)).toThrow(RangeError);
+  });
+
+  it('should return discount = 0 when no promo code is provided', () => {
+    const result = calculateOrderTotal(pizzas, 5, 2, null, promoCodes, 15, 2);
+    expect(result.discount).toBe(0);
+  });
+
+  it('should round all amounts to 2 decimal places', () => {
+    // deliveryFee = 2.00 + (3.5-3)*0.50 = 2.25
+    // surge = 1.3 (Wednesday lunch)
+    // deliveryFee * surge = 2.25 * 1.3 = 2.925 → 2.93
+    // total = 20.00 + 2.93 = 22.93
+    const items = [{ name: 'Burger', price: 20, quantity: 1 }];
+    const result = calculateOrderTotal(items, 3.5, 2, null, promoCodes, 12, 3);
+    expect(result).toEqual({ subtotal: 20.00, discount: 0, deliveryFee: 2.25, surge: 1.3, total: 22.93 });
+  });
+
+  it('should correctly sum multiple items', () => {
+    // 2 pizzas * 12.50 = 25.00, 3 burgers * 8.00 = 24.00 → subtotal = 49.00
+    // deliveryFee = 3.00, surge = 1.0, total = 52.00
+    const items = [
+      { name: 'Pizza', price: 12.50, quantity: 2 },
+      { name: 'Burger', price: 8.00, quantity: 3 },
+    ];
+    const result = calculateOrderTotal(items, 5, 2, null, promoCodes, 15, 2);
+    expect(result).toEqual({ subtotal: 49.00, discount: 0, deliveryFee: 3.00, surge: 1.0, total: 52.00 });
+  });
+
+  it('should return deliveryFee = 0 and total = subtotal for click & collect (distance = 0)', () => {
+    // distance = 0 → click & collect → no delivery fee
+    const result = calculateOrderTotal(pizzas, 0, 2, null, promoCodes, 15, 2);
+    expect(result).toEqual({ subtotal: 25.00, discount: 0, deliveryFee: 0, surge: 1.0, total: 25.00 });
   });
 });
