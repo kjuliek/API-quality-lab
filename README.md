@@ -41,6 +41,7 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [calculateDeliveryFee](#calculatedeliveryfee)
   - [applyPromoCode](#applypromocode)
   - [calculateSurge](#calculatesurge)
+  - [calculateOrderTotal](#calculateordertotal)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -88,12 +89,12 @@ src/
   server.js      # Starts the server on port 3000
   utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
-  pricing.js     # Pricing engine: calculateDeliveryFee, applyPromoCode, calculateSurge
+  pricing.js     # Pricing engine: calculateDeliveryFee, applyPromoCode, calculateSurge, calculateOrderTotal
 tests/
   app.test.js        # HTTP tests with Supertest
   utils.test.js      # Unit tests for utility functions (60+ tests)
   validators.test.js # Unit tests for validators (23 tests)
-  pricing.test.js    # Unit tests for pricing functions (46 tests)
+  pricing.test.js    # Unit tests for pricing functions (58 tests)
 docs/
   screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
 ```
@@ -1045,6 +1046,87 @@ GREEN: added `if (hour < 10 || hour >= 22) return 0` as the first check.
 **Tests 5, 10, 11, 12, 13 — free tests**
 
 Already covered by the implementation at the time they were added. No code change needed.
+
+---
+
+### calculateOrderTotal
+
+Assembles all pricing functions into a single order calculation. Built using TDD.
+
+```js
+calculateOrderTotal(items, distance, weight, promoCode, promoCodes, hour, dayOfWeek)
+```
+
+**Steps:**
+1. Validate items (non-empty, quantity > 0, price ≥ 0)
+2. Calculate subtotal: sum of `price * quantity`
+3. Apply promo code via `applyPromoCode`
+4. Calculate base delivery fee via `calculateDeliveryFee`
+5. Apply surge multiplier via `calculateSurge` — throws if closed (surge = 0)
+6. Return `{ subtotal, discount, deliveryFee, surge, total }` — all amounts rounded to 2 decimals
+
+Note: surge applies **only to the delivery fee**, not to the subtotal.
+
+**Tests written:**
+
+| # | Test | Result |
+|---|---|---|
+| 1 | 2 pizzas, 5km, 2kg, Tuesday 15h → full result | RED → GREEN |
+| 2 | Same + BIENVENUE20 → discount = 5, total = 23 | free test |
+| 3 | Same, Friday 20h → surge = 1.8, total = 30.40 | free test |
+| 4 | items = [] → Error | RED → GREEN |
+| 5 | item quantity = 0 → Error | RED → GREEN |
+| 6 | item price negative → Error | free test* |
+| 7 | 23h → Error (closed) | RED → GREEN |
+| 8 | distance 15km → RangeError | free test** |
+| 9 | no promo → discount = 0 | free test |
+| 10 | rounding: 2.25 × 1.3 = 2.93 | free test |
+| 11 | multiple items → subtotal = sum | free test |
+| 12 | click & collect (distance = 0) → deliveryFee = 0 | free test |
+
+*Test 6 is free because a negative price produces a negative subtotal, which `applyPromoCode` already rejects with a `TypeError`.
+
+**Test 8 is free because `calculateDeliveryFee` already throws a `RangeError` for distance > 10.
+
+### Red/Green cycles
+
+**Test 1 — full scenario**
+
+RED: `TypeError: calculateOrderTotal is not a function`
+
+![full scenario RED](docs/screenshots/b1-order-total-full-scenario-red.png)
+
+GREEN: implemented full function — subtotal reduce, promo delegation, delivery fee, surge, rounding, return object.
+
+---
+
+**Test 4 — empty items**
+
+RED: empty array returned `{ subtotal: 0, ... }` instead of throwing.
+
+![empty items RED](docs/screenshots/b1-order-total-empty-items-red.png)
+
+GREEN: added `if (!items || items.length === 0) throw new Error(...)`.
+
+---
+
+**Test 5 — quantity = 0**
+
+RED: quantity 0 passed silently, contributing 0 to subtotal.
+
+![zero quantity RED](docs/screenshots/b1-order-total-zero-quantity-red.png)
+
+GREEN: added `for...of` loop checking `item.quantity <= 0`.
+
+---
+
+**Test 7 — closed**
+
+RED: `calculateSurge` returned `0` but the function continued and returned a result.
+
+![closed RED](docs/screenshots/b1-order-total-closed-red.png)
+
+GREEN: added `if (surge === 0) throw new Error('Restaurant is closed at this time')`.
 
 ---
 
