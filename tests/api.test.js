@@ -218,4 +218,10 @@ describe('POST /promo/validate', () => {
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
   });
+
+  it('should return 400 when amount is not a number', async () => {
+    const res = await request(app).post('/promo/validate').send({ code: 'BIENVENUE20', amount: 'abc' });
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
 });
