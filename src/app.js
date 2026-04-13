@@ -14,7 +14,7 @@ app.use('/orders', ordersRouter);
 app.use('/promo', promoRouter);
 
 // Error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   const status = err instanceof RangeError ? 400 : err.status || 400;
   res.status(status).json({ error: err.message });
 });

@@ -10,7 +10,8 @@ module.exports = [
       },
     },
     rules: {
-      'no-unused-vars': 'warn',
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-unused-expressions': 'error',
       'no-console': 'off',
     },
   },
