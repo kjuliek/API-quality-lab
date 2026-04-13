@@ -41,6 +41,8 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [Red/Green cycles](#redgreen-cycles-2)
 - [B2 — applyPromoCode](#b2--applypromocode)
   - [Red/Green cycles](#redgreen-cycles-3)
+- [B3 — calculateSurge](#b3--calculatesurge)
+  - [Red/Green cycles](#redgreen-cycles-4)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -88,12 +90,12 @@ src/
   server.js      # Starts the server on port 3000
   utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
-  pricing.js     # Pricing engine: calculateDeliveryFee, applyPromoCode
+  pricing.js     # Pricing engine: calculateDeliveryFee, applyPromoCode, calculateSurge
 tests/
   app.test.js        # HTTP tests with Supertest
   utils.test.js      # Unit tests for utility functions (60+ tests)
   validators.test.js # Unit tests for validators (23 tests)
-  pricing.test.js    # Unit tests for pricing functions (33 tests)
+  pricing.test.js    # Unit tests for pricing functions (46 tests)
 docs/
   screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
 ```
@@ -912,6 +914,135 @@ RED: `'50' < 0` est `false` en JS → aucune erreur levée, la fonction continua
 ![subtotal not number RED](docs/screenshots/b2-promo-subtotal-not-number-red.png)
 
 GREEN: ajout de `if (typeof subtotal !== 'number') throw new TypeError(...)`.
+
+---
+
+## B3 — calculateSurge
+
+Returns the price multiplier based on the time and day of the week. Built using TDD.
+
+```js
+calculateSurge(hour, dayOfWeek)
+```
+
+**Parameters:** `hour` = decimal number (e.g. `11.5` for 11h30), `dayOfWeek` = 0 (Sunday) to 6 (Saturday) — same convention as `Date.getDay()`.
+
+**Surge rules:**
+
+| Condition | Multiplier |
+|---|---|
+| `hour < 10` or `hour >= 22` | 0 (closed) |
+| Sunday (0), open hours | 1.2 |
+| Fri-Sat (5-6), 18h-22h | 1.8 |
+| Saturday (6), 11h30-14h | 1.5 |
+| Mon-Fri (1-5), 11h30-14h | 1.3 |
+| Mon-Thu (1-4), 18h-22h | 1.5 |
+| Mon-Fri (1-5), 10h-11h30 or 14h-18h | 1.0 |
+| Saturday (6), other open hours | 1.2 |
+
+**Tests written:**
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should return 1.0 on Tuesday at 15h (normal) | RED → GREEN |
+| 2 | should return 1.3 on Wednesday at 12h30 (lunch) | RED → GREEN |
+| 3 | should return 1.5 on Thursday at 20h (dinner) | RED → GREEN |
+| 4 | should return 1.8 on Friday at 20h (Fri-Sat evening) | RED → GREEN |
+| 5 | should return 1.8 on Saturday at 20h (Fri-Sat evening) | free test |
+| 6 | should return 1.2 on Sunday at 14h | RED → GREEN |
+| 7 | should return 1.5 on Saturday at 12h30 (lunch) | RED → GREEN |
+| 8 | should return 1.2 on Saturday at 15h (normal) | RED → GREEN |
+| 9 | should return 0 on Monday at 22h (closed) | RED → GREEN |
+| 10 | should return 0 on Monday at 9h (before opening) | free test |
+| 11 | should return 1.3 on Monday at 11h30 (start of lunch) | free test |
+| 12 | should return 1.3 on Friday at 11h30 (lunch) | free test |
+| 13 | should return 1.5 on Monday at 18h (start of dinner) | free test |
+
+### Red/Green cycles
+
+**Test 1 — normal multiplier**
+
+RED: function didn't exist → `TypeError: calculateSurge is not a function`
+
+![normal RED](docs/screenshots/b3-surge-normal-red.png)
+
+GREEN: created function, hardcoded `return 1.0`.
+
+---
+
+**Test 2 — lunch**
+
+RED: always returned `1.0` instead of `1.3`.
+
+![lunch RED](docs/screenshots/b3-surge-lunch-red.png)
+
+GREEN: added `if (hour >= 11.5 && hour < 14) return 1.3`.
+
+---
+
+**Test 3 — dinner Mon-Thu**
+
+RED: Thursday 20h returned `1.0` instead of `1.5`.
+
+![dinner RED](docs/screenshots/b3-surge-dinner-red.png)
+
+GREEN: added `if (dayOfWeek >= 1 && dayOfWeek <= 4 && hour >= 18) return 1.5`.
+
+---
+
+**Test 4 — Fri-Sat evening**
+
+RED: Friday 20h returned `1.0` (not in Mon-Thu range) instead of `1.8`.
+
+![Fri-Sat evening RED](docs/screenshots/b3-surge-fri-sat-evening-red.png)
+
+GREEN: added `if ((dayOfWeek === 5 || dayOfWeek === 6) && hour >= 18) return 1.8` before the dinner rule.
+
+---
+
+**Test 6 — Sunday**
+
+RED: Sunday 14h returned `1.0` instead of `1.2`.
+
+![Sunday RED](docs/screenshots/b3-surge-sunday-red.png)
+
+GREEN: added `if (dayOfWeek === 0) return 1.2`.
+
+---
+
+**Test 7 — Saturday lunch**
+
+RED: Saturday 12h30 returned `1.3` (generic lunch rule) instead of `1.5`.
+
+![Saturday lunch RED](docs/screenshots/b3-surge-saturday-lunch-red.png)
+
+GREEN: added `if (dayOfWeek === 6 && hour >= 11.5 && hour < 14) return 1.5` before the generic lunch rule.
+
+---
+
+**Test 8 — Saturday normal**
+
+RED: Saturday 15h returned `1.0` instead of `1.2` — Saturday was not in the Sunday guard.
+
+![Saturday normal RED](docs/screenshots/b3-surge-saturday-normal-red.png)
+
+GREEN: extended guard to `if (dayOfWeek === 0 || dayOfWeek === 6) return 1.2`.
+
+---
+
+**Test 9 — closed**
+
+RED: Monday 22h returned `1.5` (dinner rule) instead of `0`.
+
+![closed RED](docs/screenshots/b3-surge-closed-red.png)
+
+GREEN: added `if (hour < 10 || hour >= 22) return 0` as the first check.
+
+---
+
+**Tests 5, 10, 11, 12, 13 — free tests**
+
+Already covered by the implementation at the time they were added. No code change needed.
 
 ---
 
