@@ -37,6 +37,8 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [percentage rules](#percentage-rules)
   - [fixed rules](#fixed-rules)
   - [buyXgetY rules](#buyxgety-rules)
+- [B1 — calculateDeliveryFee](#b1--calculatedeliveryfee)
+  - [Red/Green cycles](#redgreen-cycles-2)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -84,10 +86,12 @@ src/
   server.js      # Starts the server on port 3000
   utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount
   validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
+  pricing.js     # Pricing engine: calculateDeliveryFee
 tests/
   app.test.js        # HTTP tests with Supertest
   utils.test.js      # Unit tests for utility functions (60+ tests)
   validators.test.js # Unit tests for validators (23 tests)
+  pricing.test.js    # Unit tests for pricing functions (17 tests)
 docs/
   screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
 ```
@@ -666,6 +670,136 @@ RED: function silently ignored unknown rule types instead of throwing.
 ![calculateDiscount unknown rule type RED](docs/screenshots/a7-unknown-rule-type-red.png)
 
 GREEN: added `else` branch that throws `TypeError`.
+
+---
+
+## B1 — calculateDeliveryFee
+
+Computes the delivery fee from a distance (km) and weight (kg). Built using TDD.
+
+```js
+calculateDeliveryFee(distance, weight)
+```
+
+**Pricing rules:**
+
+| Condition | Rule |
+|---|---|
+| `distance === 0` | Click & collect — fee is `0.00` (no weight surcharge) |
+| `distance > 10` | Throws `RangeError` — delivery unavailable |
+| `distance < 0` or `weight < 0` | Throws `TypeError` |
+| Either argument is not a number | Throws `TypeError` |
+| Base fee | `2.00` for any distance ≤ 3 km |
+| Distance surcharge | `+0.50` per km beyond 3 km |
+| Weight surcharge | `+1.50` if weight > 5 kg |
+
+**Tests written:**
+
+| # | Test | Result |
+|---|---|---|
+| 1 | should return 2.00 when distance is 2 km and weight is 1 kg | RED → GREEN |
+| 2 | should throw a TypeError when distance is not a number | RED → GREEN |
+| 3 | should throw a TypeError when weight is not a number | free test |
+| 4 | should return 2.00 when weight is 0 | free test |
+| 5 | should return 2.25 when distance is 3.5 km | RED → GREEN |
+| 6 | should return 3.50 when weight is 5.1 kg and distance is 2 km | RED → GREEN |
+| 7 | should return 0.00 when distance is 0 (click & collect) | RED → GREEN |
+| 8 | should throw a TypeError when weight is negative | RED → GREEN |
+| 9 | should throw a RangeError when distance is greater than 10 km | RED → GREEN |
+| 10 | should throw a TypeError when distance is negative | RED → GREEN |
+| 11 | should return 2.00 when distance is 2 km and weight is exactly 5 kg | free test |
+| 12 | should return 7.00 when distance is 10 km and weight is 6 kg | free test |
+| 13 | should return 4.50 when distance is 5 km and weight is 8 kg | free test |
+| 14 | should return 5.50 when distance is exactly 10 km | free test |
+| 15 | should return 2.00 when distance is exactly 3 km | free test |
+| 16 | should return 3.50 when distance is 6 km and weight is 2 kg | free test |
+| 17 | should return 4.00 when distance is 7 km and weight is 3 kg | free test |
+
+### Red/Green cycles
+
+**Test 1 — base fee**
+
+RED: function didn't exist → `TypeError: calculateDeliveryFee is not a function`
+
+![base fee RED](docs/screenshots/b1-delivery-fee-base-red.png)
+
+GREEN: created function, hardcoded `return 2.00`.
+
+---
+
+**Test 2 — distance not a number**
+
+RED: no type check → function silently returned `NaN`.
+
+![not a number RED](docs/screenshots/b1-delivery-fee-not-a-number-red.png)
+
+GREEN: added `typeof distance !== 'number'` and `typeof weight !== 'number'` checks.
+
+---
+
+**Test 5 — distance surcharge**
+
+RED: always returned `2.00` regardless of distance.
+
+![distance surcharge RED](docs/screenshots/b1-delivery-fee-distance-red.png)
+
+GREEN: added `if (distance > 3) fee += (distance - 3) * 0.50`.
+
+---
+
+**Test 6 — weight surcharge**
+
+RED: weight ignored → returned `2.00` instead of `3.50`.
+
+![weight surcharge RED](docs/screenshots/b1-delivery-fee-weight-red.png)
+
+GREEN: added `if (weight > 5) fee += 1.50`.
+
+---
+
+**Test 7 — click & collect**
+
+RED: distance=0 was treated as a normal delivery → returned `2.00` instead of `0.00`.
+
+![click and collect RED](docs/screenshots/b1-delivery-fee-click-and-collect-red.png)
+
+GREEN: added `if (distance === 0) return 0.00` before the base fee.
+
+---
+
+**Test 8 — negative weight**
+
+RED: negative weight passed silently → no error thrown.
+
+![negative weight RED](docs/screenshots/b1-delivery-fee-negative-weight-red.png)
+
+GREEN: added `if (weight < 0) throw new TypeError(...)`.
+
+---
+
+**Test 9 — distance out of range**
+
+RED: distance > 10 returned a fee instead of throwing.
+
+![out of range RED](docs/screenshots/b1-delivery-fee-out-of-range-red.png)
+
+GREEN: added `if (distance > 10) throw new RangeError(...)`.
+
+---
+
+**Test 10 — negative distance**
+
+RED: negative distance was being accepted silently.
+
+![negative distance RED](docs/screenshots/b1-delivery-fee-negative-distance-red.png)
+
+GREEN: added `if (distance < 0) throw new TypeError(...)`.
+
+---
+
+**Tests 3, 4, 11–17 — boundary and combination cases**
+
+These were **free tests** — the implementation already covered these cases correctly. No code change needed.
 
 ---
 
