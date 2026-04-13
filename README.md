@@ -42,6 +42,11 @@ REST API built with **Express** (Node.js), tested with **Jest + Supertest**, and
   - [applyPromoCode](#applypromocode)
   - [calculateSurge](#calculatesurge)
   - [calculateOrderTotal](#calculateordertotal)
+- [B2 — HTTP API](#b2--http-api)
+  - [POST /orders/simulate](#post-orderssimulate)
+  - [POST /orders](#post-orders)
+  - [GET /orders/:id](#get-ordersid)
+  - [POST /promo/validate](#post-promovalidate)
 - [Issues encountered](#issues-encountered)
 
 ## Tech Stack
@@ -85,16 +90,21 @@ npm start
 
 ```
 src/
-  app.js         # Express config: routes + middleware (no listen)
-  server.js      # Starts the server on port 3000
-  utils.js       # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount
-  validators.js  # Validators: isValidEmail, isValidPassword, isValidAge
-  pricing.js     # Pricing engine: calculateDeliveryFee, applyPromoCode, calculateSurge, calculateOrderTotal
+  app.js            # Express config: routes + error middleware (no listen)
+  server.js         # Starts the server on port 3000
+  utils.js          # Utility functions: capitalize, calculateAverage, slugify, clamp, sortStudents, parsePrice, groupBy, calculateDiscount
+  validators.js     # Validators: isValidEmail, isValidPassword, isValidAge
+  pricing.js        # Pricing engine: calculateDeliveryFee, applyPromoCode, calculateSurge, calculateOrderTotal
+  promoCodes.js     # In-memory promo codes list
+  routes/
+    orders.js       # POST /orders/simulate, POST /orders, GET /orders/:id
+    promo.js        # POST /promo/validate
 tests/
   app.test.js        # HTTP tests with Supertest
   utils.test.js      # Unit tests for utility functions (60+ tests)
   validators.test.js # Unit tests for validators (23 tests)
   pricing.test.js    # Unit tests for pricing functions (58 tests)
+  api.test.js        # Integration tests for HTTP routes (20 tests)
 docs/
   screenshots/   # Screenshots of RED/GREEN cycles and bug analyses
 ```
@@ -1127,6 +1137,65 @@ RED: `calculateSurge` returned `0` but the function continued and returned a res
 ![closed RED](docs/screenshots/b1-order-total-closed-red.png)
 
 GREEN: added `if (surge === 0) throw new Error('Restaurant is closed at this time')`.
+
+---
+
+## B2 — HTTP API
+
+Exposes the pricing engine via HTTP routes. Tests are integration tests — each test covers the full request → route → logic → response cycle using Supertest.
+
+**Architecture:**
+- Routes are registered in `src/routes/` using Express Router
+- All errors are forwarded with `next(err)` and handled by a central error middleware in `app.js`
+- Orders are stored in memory in `orders.js` with a `resetOrders()` function called in `beforeEach` to ensure test isolation
+
+### POST /orders/simulate
+
+Calculates the order total without saving. Returns `{ subtotal, discount, deliveryFee, surge, total }`.
+
+| # | Test | Status |
+|---|---|---|
+| 1 | Normal order → 200 + correct price detail | ✓ |
+| 2 | With valid promo code → discount applied | ✓ |
+| 3 | Expired promo code → 400 + error message | ✓ |
+| 4 | Empty cart → 400 | ✓ |
+| 5 | Distance > 10km → 400 | ✓ |
+| 6 | Closed (23h) → 400 | ✓ |
+| 7 | Surge Friday 20h → surge = 1.8, total = 30.40 | ✓ |
+
+### POST /orders
+
+Same as `/simulate` but saves the order in memory with a UUID. Returns the order with its ID. Status `201`.
+
+| # | Test | Status |
+|---|---|---|
+| 1 | Valid order → 201 + order with ID | ✓ |
+| 2 | Order retrievable via GET /orders/:id | ✓ |
+| 3 | Two orders → two different IDs | ✓ |
+| 4 | Invalid order → 400 | ✓ |
+| 5 | Invalid order is not saved | ✓ |
+
+### GET /orders/:id
+
+Returns a saved order by ID.
+
+| # | Test | Status |
+|---|---|---|
+| 1 | Existing ID → 200 + complete order | ✓ |
+| 2 | Non-existing ID → 404 | ✓ |
+| 3 | Returned structure has all required fields | ✓ |
+
+### POST /promo/validate
+
+Validates a promo code against an amount. Returns `{ valid, code, discount, newAmount }` or an error. Does not modify any state.
+
+| # | Test | Status |
+|---|---|---|
+| 1 | Valid code → 200 + discount details | ✓ |
+| 2 | Expired code → 400 + reason | ✓ |
+| 3 | Amount below minOrder → 400 + reason | ✓ |
+| 4 | Unknown code → 404 | ✓ |
+| 5 | No code in body → 400 | ✓ |
 
 ---
 
